@@ -41,25 +41,48 @@ const programGroups = [
 const scheduleList = document.querySelector("#schedule-list");
 
 function renderSchedule() {
-  scheduleList.innerHTML = programGroups
-    .map(
-      ({ id, day, programs }) => `
-        <section class="schedule-group" aria-labelledby="${id}-title">
-          <h3 class="schedule-day" id="${id}-title">${day}</h3>
-          <div class="schedule-day-list">
-            ${programs
-              .map(
-                ([time, title]) => `
-                  <article class="program-slot">
-                    <p class="program-time">${time.replace(" - ", " <span>—</span> ")}</p>
-                    <h4><em>${title}</em></h4>
-                  </article>`
-              )
-              .join("")}
-          </div>
-        </section>`
-    )
-    .join("");
+  const fragment = document.createDocumentFragment();
+
+  programGroups.forEach(({ id, day, programs }) => {
+    const group = document.createElement("section");
+    const titleId = `${id}-title`;
+    group.className = "schedule-group";
+    group.setAttribute("aria-labelledby", titleId);
+
+    const dayHeading = document.createElement("h3");
+    dayHeading.className = "schedule-day";
+    dayHeading.id = titleId;
+    dayHeading.textContent = day;
+    group.append(dayHeading);
+
+    const list = document.createElement("div");
+    list.className = "schedule-day-list";
+
+    programs.forEach(([time, title]) => {
+      const slot = document.createElement("article");
+      slot.className = "program-slot";
+
+      const timeText = document.createElement("p");
+      const [start, end] = time.split(" - ");
+      const separator = document.createElement("span");
+      timeText.className = "program-time";
+      timeText.append(document.createTextNode(`${start} `), separator, document.createTextNode(` ${end}`));
+      separator.textContent = "—";
+
+      const programHeading = document.createElement("h4");
+      const emphasizedTitle = document.createElement("em");
+      emphasizedTitle.textContent = title;
+      programHeading.append(emphasizedTitle);
+
+      slot.append(timeText, programHeading);
+      list.append(slot);
+    });
+
+    group.append(list);
+    fragment.append(group);
+  });
+
+  scheduleList.replaceChildren(fragment);
 }
 
 renderSchedule();
