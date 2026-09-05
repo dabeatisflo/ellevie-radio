@@ -1,0 +1,26 @@
+{
+  "name": "ellevie-radio",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "expo": "~57.0.20",
+    "expo-audio": "~57.0.4",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "check": "tsc --noEmit",
+    "build:android": "eas build --platform android --profile production",
+    "build:ios": "eas build --platform ios --profile production"
+  },
+  "private": true
+}
