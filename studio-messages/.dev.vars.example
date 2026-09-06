@@ -1,0 +1,4 @@
+ADMIN_PASSWORD=choose-a-long-unique-password
+IP_HASH_SECRET=replace-with-at-least-32-random-characters
+# Official Cloudflare test secret; replace it with the real secret before deployment.
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA

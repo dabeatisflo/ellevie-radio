@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ellevie-studio-messages",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-05",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ellevie-studio",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://ellevie.fr,https://www.ellevie.fr",
+    "MESSAGE_MAX_LENGTH": "500",
+    "RETENTION_DAYS": "30",
+    "TURNSTILE_SITE_KEY": "REPLACE_WITH_TURNSTILE_SITE_KEY"
+  },
+  "triggers": {
+    "crons": ["17 3 * * *"]
+  }
+}

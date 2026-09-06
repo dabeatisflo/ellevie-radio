@@ -1,0 +1,17 @@
+{
+  "name": "ellevie-studio-messages",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Service de messages sécurisé entre les auditrices et le studio Ellevie.",
+  "scripts": {
+    "test": "node --test",
+    "dev": "wrangler dev --local --config wrangler.dev.jsonc",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply ellevie-studio --local --config wrangler.dev.jsonc",
+    "db:migrate:remote": "wrangler d1 migrations apply ellevie-studio --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^4.35.0"
+  }
+}
