@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+dist-android-test/
+*.jks
+*.keystore
+*.apk
+*.aab
+.env
+.env.*
+

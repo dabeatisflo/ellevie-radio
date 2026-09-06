@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "ellevie Radio",
+    "slug": "ellevie-radio-messages",
+    "owner": "dabeatisflos-team",
+    "version": "1.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "ellevie-messages",
+    "description": "La radio feel good avec messages texte vers le studio.",
+    "primaryColor": "#EF003D",
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": true,
+          "enableBackgroundRecording": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#EF003D"
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "fr.ellevie.radio.messages",
+      "buildNumber": "1",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "android": {
+      "package": "fr.ellevie.radio.messages",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#EF003D",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7b35025b-9bff-4335-8bfc-ac3bf0d5a032"
+      }
+    }
+  }
+}
