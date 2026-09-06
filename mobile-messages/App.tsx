@@ -217,12 +217,8 @@ function MessagesScreen() {
 
   return (
     <View style={styles.messagesScreen}>
-      <View style={styles.messagesHeading}>
-        <Text style={styles.eyebrowLight}>EN DIRECT AVEC LE STUDIO</Text>
-        <Text style={styles.messagesTitle}>Messages</Text>
-        <Text style={styles.messagesIntro}>
-          Écrivez-nous en direct. Texte uniquement, sans photo ni fichier.
-        </Text>
+      <View style={styles.messagesPageHeader}>
+        <Text style={styles.messagesPageTitle}>MESSAGES</Text>
       </View>
 
       <View style={styles.messagesWebviewFrame}>
@@ -420,7 +416,7 @@ function PlayerBar({
 
 function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   const tabs: { id: Tab; icon: string; label: string }[] = [
-    { id: 'direct', icon: '●', label: 'Direct' },
+    { id: 'direct', icon: '●', label: 'Accueil' },
     { id: 'messages', icon: '✉', label: 'Messages' },
     { id: 'programmes', icon: '▤', label: 'Programmes' },
     { id: 'animatrices', icon: '♥', label: 'Animatrices' },
@@ -523,7 +519,7 @@ export default function App() {
   return (
     <SafeAreaView style={styles.app}>
       <StatusBar style="dark" />
-      <BrandHeader />
+      {tab !== 'messages' && <BrandHeader />}
       {tab === 'messages' ? (
         <MessagesScreen />
       ) : (
@@ -539,14 +535,16 @@ export default function App() {
         </ScrollView>
       )}
       <View style={styles.bottomDock}>
-        <PlayerBar
-          playing={playerStatus.playing}
-          buffering={playbackRequested || (playerStatus.playing && playerStatus.isBuffering)}
-          error={localError}
-          volume={volume}
-          onToggle={togglePlayback}
-          onVolume={setVolume}
-        />
+        {tab !== 'messages' && (
+          <PlayerBar
+            playing={playerStatus.playing}
+            buffering={playbackRequested || (playerStatus.playing && playerStatus.isBuffering)}
+            error={localError}
+            volume={volume}
+            onToggle={togglePlayback}
+            onVolume={setVolume}
+          />
+        )}
         <TabBar active={tab} onChange={setTab} />
       </View>
     </SafeAreaView>
@@ -652,29 +650,27 @@ const styles = StyleSheet.create({
   sectionTitle: { color: COLORS.ink, fontSize: 28, lineHeight: 32, fontWeight: '900', letterSpacing: -1.1 },
   sectionTitleSpacing: { marginTop: 34 },
   bodyText: { color: COLORS.muted, fontSize: 15, lineHeight: 24, marginTop: 11, marginBottom: 22 },
-  messagesScreen: { flex: 1, backgroundColor: '#F7F2F3' },
-  messagesHeading: {
-    backgroundColor: COLORS.red,
-    paddingHorizontal: 22,
-    paddingTop: 19,
-    paddingBottom: 18,
+  messagesScreen: { flex: 1, backgroundColor: COLORS.white },
+  messagesPageHeader: {
+    minHeight: 82,
+    paddingHorizontal: 20,
+    backgroundColor: COLORS.white,
+    borderBottomColor: COLORS.line,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  messagesTitle: {
-    color: COLORS.white,
-    fontSize: 34,
-    lineHeight: 38,
+  messagesPageTitle: {
+    color: COLORS.ink,
+    fontSize: 26,
+    lineHeight: 31,
     fontWeight: '900',
-    letterSpacing: -1.3,
+    letterSpacing: 1.1,
   },
-  messagesIntro: { color: COLORS.white, fontSize: 13, lineHeight: 19, opacity: 0.92, marginTop: 6 },
   messagesWebviewFrame: {
     flex: 1,
-    margin: 10,
     overflow: 'hidden',
-    borderRadius: 24,
     backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.line,
   },
   messagesWebview: { flex: 1, backgroundColor: COLORS.white },
   messagesLoading: {
