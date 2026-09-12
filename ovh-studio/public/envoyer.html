@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ed003d">
+    <title>Messages — Ellevie</title>
+    <meta name="description" content="Écrivez ou envoyez un message vocal au studio Ellevie Radio.">
+    <link rel="stylesheet" href="/styles.css?v=11">
+    <script src="/form.js?v=11" defer></script>
+  </head>
+  <body class="listener-page">
+    <main class="listener-shell">
+      <header class="brand-header" aria-label="Ellevie Radio">
+        <span class="brand-script">ellevie</span>
+        <span class="brand-tagline">Lady's First</span>
+      </header>
+
+      <section id="account-card" class="listener-card account-card" aria-labelledby="account-title">
+        <div class="account-heading">
+          <div class="eyebrow">VOTRE ESPACE ELLEVIE</div>
+          <h1 id="account-title">Messages</h1>
+          <p>Connectez-vous pour retrouver vos conversations sur chaque appareil.</p>
+        </div>
+
+        <div class="account-tabs" role="tablist" aria-label="Connexion ou inscription">
+          <button id="login-tab" class="account-tab is-active" type="button" role="tab" aria-selected="true">Connexion</button>
+          <button id="register-tab" class="account-tab" type="button" role="tab" aria-selected="false">Créer un compte</button>
+        </div>
+
+        <form id="login-form" class="account-form" novalidate>
+          <label for="login-email">Adresse e-mail</label>
+          <input id="login-email" type="email" maxlength="191" autocomplete="email" inputmode="email" required>
+          <label for="login-password">Mot de passe</label>
+          <input id="login-password" type="password" maxlength="128" autocomplete="current-password" required>
+          <button id="login-button" class="primary-button" type="submit">Se connecter</button>
+        </form>
+
+        <form id="register-form" class="account-form" novalidate hidden>
+          <label for="register-name">Votre prénom</label>
+          <input id="register-name" type="text" minlength="2" maxlength="40" autocomplete="given-name" required>
+          <label for="register-email">Adresse e-mail</label>
+          <input id="register-email" type="email" maxlength="191" autocomplete="email" inputmode="email" required>
+          <label for="register-password">Choisissez un mot de passe</label>
+          <input id="register-password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>
+          <small>Minimum 10 caractères, avec une majuscule, une minuscule et un chiffre.</small>
+          <label for="register-confirmation">Confirmez le mot de passe</label>
+          <input id="register-confirmation" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>
+          <label class="privacy-consent">
+            <input id="privacy-accepted" type="checkbox" required>
+            <span>J'accepte la <a href="/confidentialite" target="_blank" rel="noreferrer">politique de confidentialité</a>.</span>
+          </label>
+          <button id="register-button" class="primary-button" type="submit">Créer mon compte</button>
+        </form>
+
+        <p id="auth-status" class="form-status" role="status" aria-live="polite"></p>
+        <p id="security-error" class="form-error" hidden></p>
+      </section>
+
+      <section id="chat-card" class="listener-card chat-card" aria-labelledby="form-title" hidden>
+        <div class="chat-titlebar">
+          <div>
+            <div class="eyebrow">EN DIRECT AVEC LE STUDIO</div>
+            <h1 id="form-title">Messages</h1>
+          </div>
+          <div class="chat-account">
+            <span class="live-dot"><i></i> En ligne</span>
+            <button id="logout-button-listener" class="text-button" type="button">Déconnexion</button>
+          </div>
+        </div>
+
+        <div class="app-chat-profile">
+          <span>Connectée comme <strong id="chat-user-name"></strong></span>
+          <button id="app-logout-button" class="text-button" type="button">Déconnexion</button>
+        </div>
+
+        <div id="sent-messages" class="listener-messages" aria-live="polite"></div>
+
+        <form id="message-form" class="message-composer" novalidate>
+          <div id="composer-default" class="composer-default">
+            <div class="composer-input qmusic-composer">
+              <label class="visually-hidden" for="message">Votre message</label>
+              <textarea id="message" name="message" rows="1" minlength="2" maxlength="500" enterkeyhint="send" placeholder="Écrire un message"></textarea>
+              <span id="character-count" class="character-count">0/500</span>
+              <button id="submit-button" class="round-action send-button" type="submit" aria-label="Envoyer le message" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20.5 22 12 3 3.5v6.7l13.5 1.8L3 13.8z"/></svg>
+              </button>
+              <button id="record-button" class="round-action record-button" type="button" aria-label="Enregistrer un message vocal">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v7a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12Z"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="recording-panel" class="voice-composer-panel recording-panel" hidden>
+            <span class="voice-state-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v7a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12Z"/></svg>
+            </span>
+            <strong id="recording-time" class="recording-time">00:00</strong>
+            <button id="stop-recording-button" class="stop-recording-button" type="button" aria-label="Arrêter l'enregistrement"><span></span></button>
+          </div>
+
+          <div id="voice-preview-panel" class="voice-composer-panel voice-preview-panel" hidden>
+            <button id="discard-recording-button" class="discard-recording-button" type="button" aria-label="Supprimer l'enregistrement">×</button>
+            <button id="preview-play-button" class="preview-play-button" type="button" aria-label="Écouter l'enregistrement">▶</button>
+            <div class="preview-track-wrap">
+              <input id="preview-progress" class="voice-progress" type="range" min="0" max="100" value="0" aria-label="Position de lecture">
+              <span id="preview-remaining" class="preview-remaining">-0:00</span>
+            </div>
+            <button id="send-voice-button" class="round-action voice-send-button" type="button" aria-label="Envoyer le message vocal">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20.5 22 12 3 3.5v6.7l13.5 1.8L3 13.8z"/></svg>
+            </button>
+          </div>
+
+          <div class="honeypot" aria-hidden="true">
+            <label for="website">Site web</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
+
+          <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
+        </form>
+
+        <p class="privacy-note">
+          Messages privés · audio maximum 30 secondes · conservation 30 jours.
+          <a href="/confidentialite">Confidentialité</a>
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

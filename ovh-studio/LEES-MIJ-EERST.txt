@@ -1,0 +1,60 @@
+ELLEVIE STUDIO — COMPLETE ANDROID-UPDATE 1.4.0
+Accounts, geschiedenis, voiceclips, antwoorden en pushmeldingen
+
+WAT IS NIEUW?
+- Luisteraars registreren en melden zich aan met e-mail en wachtwoord.
+- De app onthoudt de aanmelding gedurende 180 dagen.
+- De volledige privéconversatie blijft 30 dagen op de server beschikbaar,
+  ook nadat de app werd afgesloten of op een ander toestel werd geopend.
+- Tekstberichten en voiceclips van maximaal 30 seconden.
+- Rode opnameknop en opnamevoorbeeld zoals gevraagd.
+- Voiceclips zijn rechtstreeks afspeelbaar in de Studio.
+- Studio vernieuwt automatisch om de drie seconden; de knop Actualiser is
+  alleen nog een extra handmatige mogelijkheid.
+- Studio toont één verticale lijst, gesorteerd op de nieuwste activiteit.
+- Binnen ieder gesprek staan zowel berichten als antwoorden nieuwste eerst.
+- Iedere medewerker meldt zich aan met haar voornaam en het gedeelde
+  Studio-wachtwoord; web en Android gebruiken exact dezelfde login.
+- Zodra iemand in een antwoordvak klikt, is dat gesprek tien minuten voor
+  haar gereserveerd. Een tweede medewerker kan dan niet tegelijk antwoorden.
+- Antwoorden kan met de knop Répondre, gewone Enter en numpad-Enter.
+- De Studio-app kan echte Android-pushmeldingen ontvangen bij ieder nieuw,
+  niet-gefilterd tekstbericht of iedere nieuwe voiceclip.
+- In de Studio-app staat een schakelaar om meldingen aan of uit te zetten.
+- In de radio-app staat dezelfde schakelaar voor meldingen bij een antwoord
+  van het Studio-team.
+- De eerste druk op de rode voiceclipknop handelt de Android-microfoon-
+  toestemming af en start daarna automatisch de opname.
+
+WAAR UPLOADEN MET FILEZILLA?
+1. Pak dit ZIP-bestand eerst uit op de computer.
+2. Open rechts in FileZilla exact deze map:
+   /home/sxwxrvj/ellevie-studio
+3. Sleep de drie uitgepakte mappen app, public en database naar die map.
+4. Kies bij bestaande bestanden: overschrijven.
+5. Verwijder niets op de server. Laat config.local.php en de bestaande
+   .htaccess gewoon staan; die zitten bewust niet in deze update.
+
+BELANGRIJK
+- Upload de inhoud NIET alleen naar public.
+- Importeer schema.sql NIET opnieuw. De database wordt automatisch en
+  veilig uitgebreid zodra de pagina na de upload voor het eerst opent.
+- De private map storage/voice-clips wordt automatisch aangemaakt.
+
+NA HET UPLOADEN
+1. Open https://studio.ellevie.fr/envoyer en maak één testaccount.
+2. Stuur één tekstbericht en één korte voiceclip.
+3. Open https://studio.ellevie.fr/studio en controleer antwoorden en audio.
+4. Installeer daarna de aparte Studio-APK 1.1.0 op de gsm van de medewerker.
+5. Meld je in die app aan bij Studio.
+6. Zet bovenaan "Meldingen bij nieuw bericht" aan en kies Toestaan wanneer
+   Android om toestemming voor meldingen vraagt.
+7. Stuur vanuit de luisteraarsapp een nieuw testbericht. De melding hoort ook
+   toe te komen wanneer de Studio-app gesloten is.
+8. Antwoord vanuit Studio, zet meldingen in de radio-app aan en controleer dat
+   de auditrice ook met gesloten radio-app een antwoordmelding ontvangt.
+9. Open Studio tegelijk in twee sessies met verschillende voornamen. Klik in
+   sessie één op een antwoordvak en controleer dat sessie twee het gesprek als
+   vergrendeld toont.
+
+Er staan geen databasewachtwoorden of andere geheime gegevens in deze ZIP.

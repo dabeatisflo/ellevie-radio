@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#a8002a">
+    <title>Studio — Ellevie</title>
+    <link rel="stylesheet" href="/styles.css?v=11">
+    <script src="/studio.js?v=11" defer></script>
+  </head>
+  <body class="studio-page">
+    <main>
+      <section id="login-panel" class="login-panel" aria-labelledby="login-title">
+        <div class="studio-brand">
+          <span class="brand-script">ellevie</span>
+          <span>ESPACE STUDIO</span>
+        </div>
+        <form id="login-form" class="login-card">
+          <h1 id="login-title">Connexion studio</h1>
+          <p>Cette page est réservée à l'équipe Ellevie.</p>
+          <label for="operator-name">Votre prénom</label>
+          <input id="operator-name" name="operatorName" type="text" autocomplete="given-name" minlength="2" maxlength="40" required>
+          <label for="password">Mot de passe</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <button class="primary-button" type="submit">Se connecter</button>
+          <p id="login-status" class="form-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section id="dashboard" class="dashboard" hidden>
+        <header class="studio-topbar">
+          <div class="studio-brand">
+            <span class="brand-script">ellevie</span>
+            <span>MESSAGES STUDIO</span>
+          </div>
+          <div class="topbar-actions">
+            <span class="operator-badge">Connectée : <strong id="operator-display">Studio</strong></span>
+            <label class="sound-toggle">
+              <input id="sound-toggle" type="checkbox" checked>
+              Son
+            </label>
+            <span id="connection-state" class="connection-state">En ligne</span>
+            <button id="settings-button" class="secondary-button" type="button">Paramètres</button>
+            <button id="logout-button" class="secondary-button" type="button">Déconnexion</button>
+          </div>
+        </header>
+
+        <div class="dashboard-content">
+          <section class="stats" aria-label="Résumé">
+            <button class="stat-card is-active" data-status="active" type="button">
+              <span>Nouveaux</span><strong id="new-count">0</strong>
+            </button>
+            <button class="stat-card warning" data-status="quarantined" type="button">
+              <span>À vérifier</span><strong id="quarantined-count">0</strong>
+            </button>
+            <button class="stat-card" data-status="archived" type="button">
+              <span>Archivés</span><strong id="archived-count">0</strong>
+            </button>
+            <button class="stat-card" data-status="all" type="button">
+              <span>Tous</span><strong>→</strong>
+            </button>
+          </section>
+
+          <div class="message-heading">
+            <div>
+              <p class="eyebrow">ACTUALISATION AUTOMATIQUE</p>
+              <h1 id="list-title">Messages récents</h1>
+            </div>
+            <button id="refresh-button" class="secondary-button" type="button">Actualiser</button>
+          </div>
+
+          <p id="dashboard-status" class="form-status" role="status" aria-live="polite"></p>
+          <section id="message-list" class="message-list" aria-label="Messages"></section>
+          <div id="empty-state" class="empty-state" hidden>
+            <span>♡</span>
+            <h2>Aucun message ici</h2>
+            <p>Les nouveaux messages apparaîtront automatiquement.</p>
+          </div>
+        </div>
+
+        <section id="settings-panel" class="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+          <div class="settings-card">
+            <div class="settings-heading">
+              <div>
+                <p class="eyebrow">SÉCURITÉ DU STUDIO</p>
+                <h2 id="settings-title">Paramètres</h2>
+              </div>
+              <button id="settings-close" class="icon-button" type="button" aria-label="Fermer">×</button>
+            </div>
+            <form id="password-form">
+              <p>Modifiez ici le mot de passe utilisé pour accéder au studio.</p>
+              <label for="current-password">Mot de passe actuel</label>
+              <input id="current-password" type="password" autocomplete="current-password" required>
+              <label for="new-password">Nouveau mot de passe</label>
+              <input id="new-password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required>
+              <small>Minimum 10 caractères, avec majuscule, minuscule et chiffre.</small>
+              <label for="confirm-password">Confirmez le nouveau mot de passe</label>
+              <input id="confirm-password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required>
+              <button class="primary-button" type="submit">Enregistrer le nouveau mot de passe</button>
+              <p id="password-status" class="form-status" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

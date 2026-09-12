@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "414047648671",
+    "project_id": "ellevie-c9fc6",
+    "storage_bucket": "ellevie-c9fc6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:414047648671:android:013e1fcee025fbe092dbaa",
+        "android_client_info": {
+          "package_name": "fr.ellevie.radio.messages"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMUqDGG9WnVW1bkwajtqIl083BJDljqVg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:414047648671:android:9a4fc72c0f34e72892dbaa",
+        "android_client_info": {
+          "package_name": "fr.ellevie.radio.studio"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMUqDGG9WnVW1bkwajtqIl083BJDljqVg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

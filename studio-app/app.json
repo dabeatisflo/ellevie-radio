@@ -1,31 +1,22 @@
 {
   "expo": {
-    "name": "ellevie Radio",
-    "slug": "ellevie-radio-messages",
+    "name": "ellevie Studio",
+    "slug": "ellevie-studio",
     "owner": "dabeatisflos-team",
-    "version": "1.4.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "ellevie-messages",
-    "description": "La radio feel good avec messages texte et vocaux, historique et réponses du studio.",
-    "primaryColor": "#EF003D",
+    "scheme": "ellevie-studio",
+    "description": "L'espace privé de l'équipe Ellevie pour traiter les messages des auditrices.",
+    "primaryColor": "#A8002A",
     "plugins": [
-      [
-        "expo-audio",
-        {
-          "microphonePermission": "Autorisez ellevie Radio à utiliser le microphone uniquement pour enregistrer votre message vocal.",
-          "recordAudioAndroid": true,
-          "enableBackgroundPlayback": true,
-          "enableBackgroundRecording": false
-        }
-      ],
       [
         "expo-notifications",
         {
           "icon": "./assets/android-icon-monochrome.png",
           "color": "#EF003D",
-          "defaultChannel": "studio-replies"
+          "defaultChannel": "studio-messages"
         }
       ],
       [
@@ -34,24 +25,21 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 220,
           "resizeMode": "contain",
-          "backgroundColor": "#EF003D"
+          "backgroundColor": "#A8002A"
         }
       ]
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "fr.ellevie.radio.messages",
-      "buildNumber": "1",
-      "infoPlist": {
-        "UIBackgroundModes": ["audio"]
-      }
+      "bundleIdentifier": "fr.ellevie.radio.studio",
+      "buildNumber": "2"
     },
     "android": {
-      "package": "fr.ellevie.radio.messages",
-      "versionCode": 6,
+      "package": "fr.ellevie.radio.studio",
+      "versionCode": 2,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#EF003D",
+        "backgroundColor": "#A8002A",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -63,7 +51,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "7b35025b-9bff-4335-8bfc-ac3bf0d5a032"
+        "projectId": "aea9f18d-006c-4abf-9345-33e2d3e573b8"
       }
     }
   }

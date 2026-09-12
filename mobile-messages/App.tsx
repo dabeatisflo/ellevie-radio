@@ -1,22 +1,29 @@
 import { StatusBar } from 'expo-status-bar';
 import {
+  AudioModule,
   setAudioModeAsync,
   useAudioPlayer,
   useAudioPlayerStatus,
 } from 'expo-audio';
-import { useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import * as Notifications from 'expo-notifications';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Image,
   ImageSourcePropType,
   Linking,
+  Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import {
   getCurrentGroup,
   getCurrentProgramme,
@@ -26,7 +33,64 @@ import {
 } from './src/programs';
 
 const STREAM_URL = 'https://stream.zeno.fm/5ct6gd3f0rhvv';
-const MESSAGES_URL = 'https://ellevie-studio-messages.gzqlah8.chatgpt.site/envoyer?source=app';
+const MESSAGES_URL = 'https://studio.ellevie.fr/envoyer?source=app&appVersion=1.4.0';
+const PUSH_PREFERENCE_KEY = 'ellevie:listener-push-enabled';
+const PUSH_CHANNEL_ID = 'studio-replies';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+const MICROPHONE_BRIDGE_JS = `
+  (function () {
+    if (window.__ellevieMicrophoneBridgeInstalled) return true;
+    window.__ellevieMicrophoneBridgeInstalled = true;
+    window.__ellevieMicrophonePermissionGranted = false;
+    document.addEventListener('click', function (event) {
+      var target = event.target;
+      var button = target && target.closest ? target.closest('#record-button') : null;
+      if (!button || window.__ellevieMicrophonePermissionGranted) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestMicrophone' }));
+      }
+    }, true);
+    true;
+  })();
+`;
+
+async function requestExpoPushToken(): Promise<string> {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync(PUSH_CHANNEL_ID, {
+      name: 'Réponses du studio',
+      description: 'Réponses privées envoyées par le studio Ellevie',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 180, 250],
+      lightColor: '#EF003D',
+      sound: 'default',
+    });
+  }
+
+  const currentPermission = await Notifications.getPermissionsAsync();
+  const permission = currentPermission.granted
+    ? currentPermission
+    : await Notifications.requestPermissionsAsync();
+  if (!permission.granted) {
+    throw new Error('permission-denied');
+  }
+
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  if (!projectId) {
+    throw new Error('project-id-missing');
+  }
+  return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+}
 
 const COLORS = {
   red: '#EF003D',
@@ -204,10 +268,71 @@ function ProgrammesScreen() {
   );
 }
 
-function MessagesScreen() {
+type MessagesScreenProps = {
+  pushEnabled: boolean;
+  pushBusy: boolean;
+  pushStatus: string;
+  pushToken: string | null;
+  onTogglePush: (enabled: boolean) => void;
+};
+
+function MessagesScreen({
+  pushEnabled,
+  pushBusy,
+  pushStatus,
+  pushToken,
+  onTogglePush,
+}: MessagesScreenProps) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const webViewRef = useRef<WebView>(null);
+
+  const sendPushStateToWeb = useCallback(() => {
+    webViewRef.current?.postMessage(JSON.stringify({
+      type: 'setListenerPushToken',
+      enabled: pushEnabled,
+      token: pushToken,
+      platform: Platform.OS,
+    }));
+  }, [pushEnabled, pushToken]);
+
+  useEffect(() => {
+    if (!loading) sendPushStateToWeb();
+  }, [loading, sendPushStateToWeb]);
+
+  const handleWebMessage = async (event: WebViewMessageEvent) => {
+    let message: { type?: string; enabled?: boolean; error?: string } = {};
+    try {
+      message = JSON.parse(event.nativeEvent.data);
+    } catch {
+      return;
+    }
+
+    if (message.type === 'listenerReady') {
+      sendPushStateToWeb();
+      return;
+    }
+    if (message.type !== 'requestMicrophone') return;
+
+    const permission = await AudioModule.requestRecordingPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Microphone non autorisé',
+        'Activez le microphone dans les paramètres Android pour envoyer un message vocal.',
+      );
+      return;
+    }
+    webViewRef.current?.injectJavaScript(`
+      window.__ellevieMicrophonePermissionGranted = true;
+      window.dispatchEvent(new Event('ellevieMicrophonePermissionGranted'));
+      setTimeout(function () {
+        var button = document.getElementById('record-button');
+        if (button) button.click();
+      }, 0);
+      true;
+    `);
+  };
 
   const retry = () => {
     setFailed(false);
@@ -218,7 +343,21 @@ function MessagesScreen() {
   return (
     <View style={styles.messagesScreen}>
       <View style={styles.messagesPageHeader}>
-        <Text style={styles.messagesPageTitle}>MESSAGES</Text>
+        <View style={styles.messagesTitleBlock}>
+          <Text style={styles.messagesPageTitle}>MESSAGES</Text>
+          <Text style={styles.notificationStatus}>{pushStatus}</Text>
+        </View>
+        <View style={styles.notificationToggle}>
+          <Text style={styles.notificationToggleLabel}>Notifications</Text>
+          <Switch
+            accessibilityLabel="Activer ou désactiver les notifications de réponse"
+            disabled={pushBusy}
+            onValueChange={onTogglePush}
+            value={pushEnabled}
+            trackColor={{ false: '#D7C9CD', true: '#F888A4' }}
+            thumbColor={pushEnabled ? COLORS.red : '#F5F0F1'}
+          />
+        </View>
       </View>
 
       <View style={styles.messagesWebviewFrame}>
@@ -240,6 +379,7 @@ function MessagesScreen() {
         ) : (
           <>
             <WebView
+              ref={webViewRef}
               key={reloadKey}
               source={{ uri: MESSAGES_URL }}
               originWhitelist={['https://*']}
@@ -249,7 +389,10 @@ function MessagesScreen() {
               sharedCookiesEnabled
               mixedContentMode="never"
               setSupportMultipleWindows={false}
+              mediaCapturePermissionGrantType="grantIfSameHostElsePrompt"
               allowsBackForwardNavigationGestures
+              injectedJavaScriptBeforeContentLoaded={MICROPHONE_BRIDGE_JS}
+              onMessage={handleWebMessage}
               onLoadStart={() => setLoading(true)}
               onLoadEnd={() => setLoading(false)}
               onError={() => {
@@ -332,7 +475,9 @@ function AnimatricesScreen() {
             Lorsque vous écrivez au studio, votre prénom, votre message et une empreinte technique
             anonymisée de sécurité sont conservés au maximum 30 jours. Les messages ne sont pas
             publics. L’application n’utilise ni publicité personnalisée, ni géolocalisation, ni
-            microphone, ni carnet d’adresses. Pour toute question : contact@ellevie.fr.
+            carnet d’adresses. Le microphone n’est utilisé que lorsque vous choisissez d’enregistrer
+            un message vocal. Les notifications de réponse sont facultatives et peuvent être
+            désactivées dans l’onglet Messages. Pour toute question : contact@ellevie.fr.
           </Text>
           <Pressable
             accessibilityRole="link"
@@ -443,12 +588,17 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => voi
   );
 }
 
-export default function App() {
+function RadioApp() {
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('direct');
   const [volume, setVolume] = useState(0.8);
   const [localError, setLocalError] = useState<string | null>(null);
   const [playbackRequested, setPlaybackRequested] = useState(false);
   const [clock, setClock] = useState(() => Date.now());
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushStatus, setPushStatus] = useState('Notifications désactivées');
+  const [pushToken, setPushToken] = useState<string | null>(null);
   const player = useAudioPlayer(STREAM_URL, { updateInterval: 500 });
   const playerStatus = useAudioPlayerStatus(player);
 
@@ -470,6 +620,63 @@ export default function App() {
     const timer = setInterval(() => setClock(Date.now()), 60_000);
     return () => clearInterval(timer);
   }, []);
+
+  const enablePushNotifications = useCallback(async (interactive: boolean) => {
+    setPushBusy(true);
+    setPushStatus('Activation…');
+    try {
+      const token = await requestExpoPushToken();
+      setPushToken(token);
+      setPushEnabled(true);
+      setPushStatus('Notifications activées');
+      await AsyncStorage.setItem(PUSH_PREFERENCE_KEY, 'true');
+    } catch (error) {
+      setPushEnabled(false);
+      const denied = error instanceof Error && error.message === 'permission-denied';
+      setPushStatus(denied ? 'Autorisation refusée' : 'Notifications indisponibles');
+      await AsyncStorage.setItem(PUSH_PREFERENCE_KEY, 'false');
+      if (interactive) {
+        Alert.alert(
+          denied ? 'Notifications non autorisées' : 'Activation impossible',
+          denied
+            ? 'Vous pouvez autoriser les notifications dans les paramètres Android.'
+            : 'Vérifiez votre connexion internet, puis réessayez.',
+        );
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PUSH_PREFERENCE_KEY)
+      .then((saved) => {
+        if (saved === 'true') return enablePushNotifications(false);
+        setPushStatus('Notifications désactivées');
+      })
+      .catch(() => setPushStatus('Notifications désactivées'));
+  }, [enablePushNotifications]);
+
+  useEffect(() => {
+    const openMessages = (response: Notifications.NotificationResponse | null) => {
+      if (!response) return;
+      const data = response.notification.request.content.data;
+      if (data?.screen === 'messages' || data?.type === 'studioReply') setTab('messages');
+    };
+    Notifications.getLastNotificationResponseAsync().then(openMessages).catch(() => null);
+    const subscription = Notifications.addNotificationResponseReceivedListener(openMessages);
+    return () => subscription.remove();
+  }, []);
+
+  const togglePushNotifications = useCallback((enabled: boolean) => {
+    if (enabled) {
+      void enablePushNotifications(true);
+      return;
+    }
+    setPushEnabled(false);
+    setPushStatus('Notifications désactivées');
+    AsyncStorage.setItem(PUSH_PREFERENCE_KEY, 'false').catch(() => null);
+  }, [enablePushNotifications]);
 
   useEffect(() => {
     if (!playerStatus.playing) return;
@@ -517,11 +724,17 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.app}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.app}>
       <StatusBar style="dark" />
       {tab !== 'messages' && <BrandHeader />}
       {tab === 'messages' ? (
-        <MessagesScreen />
+        <MessagesScreen
+          pushEnabled={pushEnabled}
+          pushBusy={pushBusy}
+          pushStatus={pushStatus}
+          pushToken={pushToken}
+          onTogglePush={togglePushNotifications}
+        />
       ) : (
         <ScrollView
           key={tab}
@@ -534,7 +747,7 @@ export default function App() {
           {tab === 'animatrices' && <AnimatricesScreen />}
         </ScrollView>
       )}
-      <View style={styles.bottomDock}>
+      <View style={[styles.bottomDock, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         {tab !== 'messages' && (
           <PlayerBar
             playing={playerStatus.playing}
@@ -548,6 +761,14 @@ export default function App() {
         <TabBar active={tab} onChange={setTab} />
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <RadioApp />
+    </SafeAreaProvider>
   );
 }
 
@@ -657,16 +878,21 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderBottomColor: COLORS.line,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
+  messagesTitleBlock: { flex: 1, paddingRight: 12 },
   messagesPageTitle: {
     color: COLORS.ink,
-    fontSize: 26,
-    lineHeight: 31,
+    fontSize: 22,
+    lineHeight: 27,
     fontWeight: '900',
     letterSpacing: 1.1,
   },
+  notificationStatus: { color: COLORS.muted, fontSize: 11, lineHeight: 15, marginTop: 2 },
+  notificationToggle: { alignItems: 'center', justifyContent: 'center' },
+  notificationToggleLabel: { color: COLORS.ink, fontSize: 10, fontWeight: '800', marginBottom: 1 },
   messagesWebviewFrame: {
     flex: 1,
     overflow: 'hidden',
