@@ -1,0 +1,73 @@
+name: Deploy Ellevie Studio to OVH
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-ellevie-studio-ovh
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the verified Studio source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: android-complete
+          persist-credentials: false
+
+      - name: Install the SFTP client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends sshpass
+
+      - name: Upload the Studio update to OVH
+        env:
+          OVH_SFTP_HOST: ${{ secrets.OVH_SFTP_HOST }}
+          OVH_SFTP_PASSWORD: ${{ secrets.OVH_SFTP_PASSWORD }}
+          OVH_SFTP_USER: ${{ secrets.OVH_SFTP_USER }}
+          SSHPASS: ${{ secrets.OVH_SFTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          test -n "$OVH_SFTP_HOST"
+          test -n "$OVH_SFTP_USER"
+          test -n "$OVH_SFTP_PASSWORD"
+
+          sshpass -e sftp \
+            -P 22 \
+            -o BatchMode=no \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            "$OVH_SFTP_USER@$OVH_SFTP_HOST" <<'SFTP'
+          put ovh-studio/app/bootstrap.php ellevie-studio/app/bootstrap.php
+          put ovh-studio/database/schema.sql ellevie-studio/database/schema.sql
+          put ovh-studio/public/styles.css ellevie-studio/public/styles.css
+          put ovh-studio/public/studio.html ellevie-studio/public/studio.html
+          put ovh-studio/public/index.php ellevie-studio/public/index.php
+          put ovh-studio/public/studio.js ellevie-studio/public/studio.js
+          put ovh-studio/public/confidentialite.html ellevie-studio/public/confidentialite.html
+          put ovh-studio/public/envoyer.html ellevie-studio/public/envoyer.html
+          put ovh-studio/public/form.js ellevie-studio/public/form.js
+          SFTP
+
+      - name: Verify the live Studio version
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache' \
+              "https://studio.ellevie.fr/?deploy=${GITHUB_SHA}-${attempt}" \
+              | grep --fixed-strings --quiet 'form.js?v=11'; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'The upload completed, but the expected live version was not visible.' >&2
+          exit 1
