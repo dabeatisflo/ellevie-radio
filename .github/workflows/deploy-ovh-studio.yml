@@ -81,7 +81,7 @@ jobs:
               && curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/iphone/?deploy=${GITHUB_SHA}-${attempt}" \
-              | grep --fixed-strings --quiet 'app.js?v=1.4.0' \
+              | grep --fixed-strings --quiet 'app.js?v=1.4.1' \
               && curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/iphone/manifest.webmanifest?deploy=${GITHUB_SHA}-${attempt}" \
