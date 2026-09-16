@@ -63,11 +63,35 @@ const programmeList = document.querySelector('#programme-list');
 const installButton = document.querySelector('#install-button');
 const installSheet = document.querySelector('#install-sheet');
 const installClose = document.querySelector('#install-close');
+const messagesFrame = document.querySelector('#messages-frame');
 
 let activeTab = 'direct';
 let selectedProgrammeGroup = getCurrentGroup().id;
 let deferredInstallPrompt = null;
 let playbackRequested = false;
+let messagesFramePromise = null;
+
+async function loadMessagesFrame() {
+  if (messagesFrame.srcdoc || messagesFramePromise) return messagesFramePromise;
+
+  messagesFramePromise = fetch(messagesFrame.dataset.messagesUrl, {
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { Accept: 'text/html' }
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error(`Messages returned ${response.status}`);
+      return response.text();
+    })
+    .then((html) => {
+      messagesFrame.srcdoc = html;
+    })
+    .catch(() => {
+      messagesFrame.srcdoc = '<!doctype html><html lang="fr"><body><p>Les messages sont temporairement indisponibles. Réessayez dans un instant.</p></body></html>';
+    });
+
+  return messagesFramePromise;
+}
 
 function setActiveTab(tab, updateHash = true) {
   const nextTab = VALID_TABS.has(tab) ? tab : 'direct';
@@ -88,6 +112,7 @@ function setActiveTab(tab, updateHash = true) {
   }
 
   if (updateHash) history.replaceState(null, '', `#${nextTab}`);
+  if (nextTab === 'messages') void loadMessagesFrame();
   if (nextTab === 'programmes') renderProgrammes(selectedProgrammeGroup);
 }
 
