@@ -55,6 +55,20 @@ jobs:
           put ovh-studio/public/confidentialite.html ellevie-studio/public/confidentialite.html
           put ovh-studio/public/envoyer.html ellevie-studio/public/envoyer.html
           put ovh-studio/public/form.js ellevie-studio/public/form.js
+          -mkdir ellevie-studio/public/iphone
+          -mkdir ellevie-studio/public/iphone/assets
+          put ovh-studio/public/iphone/index.html ellevie-studio/public/iphone/index.html
+          put ovh-studio/public/iphone/app.css ellevie-studio/public/iphone/app.css
+          put ovh-studio/public/iphone/app.js ellevie-studio/public/iphone/app.js
+          put ovh-studio/public/iphone/manifest.webmanifest ellevie-studio/public/iphone/manifest.webmanifest
+          put ovh-studio/public/iphone/sw.js ellevie-studio/public/iphone/sw.js
+          put ovh-studio/public/iphone/assets/ellevie-logo.webp ellevie-studio/public/iphone/assets/ellevie-logo.webp
+          put ovh-studio/public/iphone/assets/icon-180.png ellevie-studio/public/iphone/assets/icon-180.png
+          put ovh-studio/public/iphone/assets/icon-192.png ellevie-studio/public/iphone/assets/icon-192.png
+          put ovh-studio/public/iphone/assets/icon-512.png ellevie-studio/public/iphone/assets/icon-512.png
+          put ovh-studio/public/iphone/assets/maya.webp ellevie-studio/public/iphone/assets/maya.webp
+          put ovh-studio/public/iphone/assets/nora.webp ellevie-studio/public/iphone/assets/nora.webp
+          put ovh-studio/public/iphone/assets/sofia.webp ellevie-studio/public/iphone/assets/sofia.webp
           SFTP
 
       - name: Verify the live Studio version
@@ -64,7 +78,15 @@ jobs:
             if curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/?deploy=${GITHUB_SHA}-${attempt}" \
-              | grep --fixed-strings --quiet 'form.js?v=11'; then
+              | grep --fixed-strings --quiet 'form.js?v=11' \
+              && curl --fail --silent --show-error \
+                --header 'Cache-Control: no-cache' \
+                "https://studio.ellevie.fr/iphone/?deploy=${GITHUB_SHA}-${attempt}" \
+                | grep --fixed-strings --quiet 'app.js?v=1.4.0' \
+              && curl --fail --silent --show-error \
+                --header 'Cache-Control: no-cache' \
+                "https://studio.ellevie.fr/iphone/manifest.webmanifest?deploy=${GITHUB_SHA}-${attempt}" \
+                | grep --fixed-strings --quiet '"display": "standalone"'; then
               exit 0
             fi
             sleep 5
