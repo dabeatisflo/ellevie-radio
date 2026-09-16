@@ -74,18 +74,18 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5; do
-            if curl --fail --silent --show-error \
+            if root_html="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
-              "https://studio.ellevie.fr/?deploy=${GITHUB_SHA}-${attempt}" \
-              | grep --fixed-strings --quiet 'form.js?v=11' \
-              && curl --fail --silent --show-error \
+              "https://studio.ellevie.fr/?deploy=${GITHUB_SHA}-${attempt}")" \
+              && iphone_html="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
-              "https://studio.ellevie.fr/iphone/?deploy=${GITHUB_SHA}-${attempt}" \
-              | grep --fixed-strings --quiet 'app.js?v=1.4.1' \
-              && curl --fail --silent --show-error \
+              "https://studio.ellevie.fr/iphone/?deploy=${GITHUB_SHA}-${attempt}")" \
+              && manifest_json="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
-              "https://studio.ellevie.fr/iphone/manifest.webmanifest?deploy=${GITHUB_SHA}-${attempt}" \
-              | grep --fixed-strings --quiet '"display": "standalone"'; then
+              "https://studio.ellevie.fr/iphone/manifest.webmanifest?deploy=${GITHUB_SHA}-${attempt}")" \
+              && [[ "$root_html" == *'form.js?v=11'* ]] \
+              && [[ "$iphone_html" == *'app.js?v=1.4.1'* ]] \
+              && [[ "$manifest_json" == *'"display": "standalone"'* ]]; then
               exit 0
             fi
             sleep 5
