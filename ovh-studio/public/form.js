@@ -44,7 +44,11 @@ const TOKEN_STORAGE_KEY = "ellevieConversationToken";
 const TOKEN_COOKIE_KEY = "ellevie_conversation";
 const HISTORY_STORAGE_PREFIX = "ellevieConversationHistory:";
 const HISTORY_SECONDS = 30 * 24 * 60 * 60;
-const source = new URLSearchParams(window.location.search).get("source") === "app" ? "app" : "web";
+const embeddedInApp = window.frameElement instanceof HTMLIFrameElement
+  && window.frameElement.dataset.source === "app";
+const source = new URLSearchParams(window.location.search).get("source") === "app" || embeddedInApp
+  ? "app"
+  : "web";
 const conversationToken = getConversationToken();
 const nativePush = { token: "", enabled: false, platform: "android" };
 
