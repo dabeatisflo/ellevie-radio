@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ef003d">
+    <meta name="description" content="ellevie Radio sur iPhone : direct, programmes et messages privés avec le studio.">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="ellevie">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'none'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src https:; connect-src 'self' https:; frame-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'"
+    >
+    <title>ellevie Radio</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" href="./assets/icon-180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png">
+    <link rel="stylesheet" href="./app.css?v=1.4.0">
+    <script src="./app.js?v=1.4.0" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <img class="header-logo" src="./assets/ellevie-logo.webp" alt="ellevie">
+        <div class="header-copy">
+          <strong>ellevie</strong>
+          <span>LADY’S FIRST</span>
+        </div>
+        <span class="live-pill"><i></i> DIRECT</span>
+      </header>
+
+      <main id="app-main">
+        <section id="screen-direct" class="screen is-active" data-screen="direct" aria-labelledby="direct-title">
+          <div class="hero">
+            <div class="hero-orb hero-orb-one" aria-hidden="true"></div>
+            <div class="hero-orb hero-orb-two" aria-hidden="true"></div>
+            <p class="eyebrow light">LADY’S FIRST</p>
+            <h1 id="direct-title">La musique qui vous <em>accompagne.</em></h1>
+            <p class="hero-intro">Votre radio feel good, partout avec vous.</p>
+            <div class="moods" aria-label="L’univers ellevie">
+              <span>Feel good</span><span>Pop</span><span>Histoires</span>
+            </div>
+            <button class="hero-play" type="button" data-audio-toggle>
+              <span class="play-symbol" aria-hidden="true">▶</span>
+              <span data-play-label>Écouter en direct</span>
+            </button>
+          </div>
+
+          <div class="content-section">
+            <p class="eyebrow red">EN CE MOMENT</p>
+            <article class="now-card">
+              <img src="./assets/ellevie-logo.webp" alt="" width="92" height="92">
+              <div>
+                <span id="current-time">En direct</span>
+                <h2 id="current-programme">ellevie Radio</h2>
+                <p>En direct sur ellevie Radio</p>
+              </div>
+            </article>
+
+            <button id="install-button" class="install-card" type="button">
+              <span class="install-icon" aria-hidden="true">↓</span>
+              <span><strong>Installer sur votre iPhone</strong><small>Ajoutez ellevie à votre écran d’accueil</small></span>
+              <span aria-hidden="true">›</span>
+            </button>
+
+            <h2 class="section-title">Votre radio, votre rythme.</h2>
+            <p class="body-copy">Une sélection pop chaleureuse, des voix familières et la bonne énergie pour chaque moment de la journée.</p>
+          </div>
+        </section>
+
+        <section id="screen-messages" class="screen messages-screen" data-screen="messages" aria-labelledby="messages-title" hidden>
+          <div class="screen-heading messages-heading">
+            <div>
+              <p class="eyebrow red">EN DIRECT AVEC LE STUDIO</p>
+              <h1 id="messages-title">Messages</h1>
+            </div>
+            <span>Actualisation automatique</span>
+          </div>
+          <div class="message-frame-wrap">
+            <iframe
+              id="messages-frame"
+              title="Conversation privée avec le studio Ellevie"
+              src="/envoyer?source=app&amp;appVersion=1.4.0&amp;platform=ios"
+              allow="microphone"
+            ></iframe>
+          </div>
+        </section>
+
+        <section id="screen-programmes" class="screen content-screen" data-screen="programmes" aria-labelledby="programmes-title" hidden>
+          <div class="screen-heading">
+            <p class="eyebrow red">VOTRE SEMAINE SUR ELLEVIE</p>
+            <h1 id="programmes-title">Grille des programmes</h1>
+            <p>Retrouvez le rythme d’Ellevie à chaque moment de la semaine.</p>
+          </div>
+          <div id="programme-tabs" class="programme-tabs" role="tablist" aria-label="Choisir un jour"></div>
+          <h2 id="programme-day" class="programme-day"></h2>
+          <div id="programme-list" class="programme-list"></div>
+        </section>
+
+        <section id="screen-animatrices" class="screen content-screen" data-screen="animatrices" aria-labelledby="animatrices-title" hidden>
+          <div class="screen-heading">
+            <p class="eyebrow red">NOS VOIX</p>
+            <h1 id="animatrices-title">Familières dès le premier mot.</h1>
+            <p>Proches, curieuses et toujours avec la bonne chanson au bon moment.</p>
+          </div>
+          <div class="host-list">
+            <article class="host-card host-red">
+              <img src="./assets/nora.webp" alt="Nora, animatrice du matin">
+              <div><span>MATIN</span><h2>Nora</h2><p>« Un réveil en douceur, une journée pleine d’énergie. »</p></div>
+            </article>
+            <article class="host-card host-coral">
+              <img src="./assets/sofia.webp" alt="Sofia, animatrice de l’après-midi">
+              <div><span>APRÈS-MIDI</span><h2>Sofia</h2><p>« Vos chansons préférées, sans jamais se presser. »</p></div>
+            </article>
+            <article class="host-card host-dark">
+              <img src="./assets/maya.webp" alt="Maya, animatrice du soir">
+              <div><span>SOIR</span><h2>Maya</h2><p>« Des histoires pour accompagner le calme du soir. »</p></div>
+            </article>
+          </div>
+          <a class="outline-button" href="https://ellevie.fr" target="_blank" rel="noreferrer">Visiter ellevie.fr</a>
+          <a class="privacy-link" href="/confidentialite" target="_blank" rel="noreferrer">Confidentialité</a>
+        </section>
+      </main>
+
+      <div class="bottom-dock">
+        <aside class="mini-player" aria-label="Lecteur radio ellevie">
+          <img src="./assets/ellevie-logo.webp" alt="" width="52" height="52">
+          <div class="mini-copy">
+            <span>● EN DIRECT</span>
+            <strong>ellevie Radio</strong>
+            <small id="player-status" aria-live="polite">Prête à écouter</small>
+          </div>
+          <button class="mini-toggle" type="button" data-audio-toggle aria-label="Écouter ellevie en direct">
+            <span class="play-symbol" aria-hidden="true">▶</span>
+          </button>
+        </aside>
+
+        <nav class="tab-bar" aria-label="Navigation principale">
+          <button class="tab-button is-active" type="button" data-tab="direct" aria-current="page"><span>●</span>Accueil</button>
+          <button class="tab-button" type="button" data-tab="messages"><span>✉</span>Messages</button>
+          <button class="tab-button" type="button" data-tab="programmes"><span>▤</span>Programmes</button>
+          <button class="tab-button" type="button" data-tab="animatrices"><span>♥</span>Animatrices</button>
+        </nav>
+      </div>
+
+      <audio id="stream-audio" src="https://stream.zeno.fm/5ct6gd3f0rhvv" preload="none" playsinline></audio>
+    </div>
+
+    <div id="install-sheet" class="sheet-backdrop" hidden>
+      <section class="install-sheet" role="dialog" aria-modal="true" aria-labelledby="install-title">
+        <button id="install-close" class="sheet-close" type="button" aria-label="Fermer">×</button>
+        <img src="./assets/icon-192.png" alt="" width="76" height="76">
+        <h2 id="install-title">Installer ellevie</h2>
+        <ol>
+          <li>Ouvrez cette page dans <strong>Safari</strong>.</li>
+          <li>Touchez le bouton <strong>Partager</strong> <span class="share-icon" aria-hidden="true">□↑</span>.</li>
+          <li>Choisissez <strong>Sur l’écran d’accueil</strong>, puis <strong>Ajouter</strong>.</li>
+        </ol>
+      </section>
+    </div>
+
+    <noscript>JavaScript doit être activé pour utiliser ellevie Radio.</noscript>
+  </body>
+</html>
