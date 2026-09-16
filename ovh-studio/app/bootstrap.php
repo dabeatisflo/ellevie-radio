@@ -105,7 +105,7 @@ function require_allowed_origin(): void
 
 function secure_headers(string $path): void
 {
-    $allowSameOriginFrame = $path === '/envoyer';
+    $allowSameOriginFrame = ($path === '/' || $path === '/envoyer');
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: ' . ($allowSameOriginFrame ? 'SAMEORIGIN' : 'DENY'));
     header('Referrer-Policy: no-referrer');
