@@ -1,0 +1,28 @@
+{
+  "id": "/iphone/",
+  "name": "ellevie Radio",
+  "short_name": "ellevie",
+  "description": "Le direct ellevie Radio, les programmes et vos messages privés avec le studio.",
+  "lang": "fr-BE",
+  "start_url": "/iphone/",
+  "scope": "/iphone/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ef003d",
+  "theme_color": "#ef003d",
+  "categories": ["music", "entertainment"],
+  "icons": [
+    {
+      "src": "/iphone/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/iphone/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
