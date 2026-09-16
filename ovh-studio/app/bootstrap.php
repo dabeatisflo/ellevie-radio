@@ -105,12 +105,14 @@ function require_allowed_origin(): void
 
 function secure_headers(string $path): void
 {
+    $allowSameOriginFrame = $path === '/envoyer';
     header('X-Content-Type-Options: nosniff');
-    header('X-Frame-Options: DENY');
+    header('X-Frame-Options: ' . ($allowSameOriginFrame ? 'SAMEORIGIN' : 'DENY'));
     header('Referrer-Policy: no-referrer');
     $microphone = ($path === '/' || $path === '/envoyer') ? '(self)' : '()';
+    $frameAncestors = $allowSameOriginFrame ? "'self'" : "'none'";
     header("Permissions-Policy: camera=(), microphone={$microphone}, geolocation=(), payment=()");
-    header("Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:");
+    header("Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors {$frameAncestors}; form-action 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:");
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
     if (str_starts_with($path, '/api/') || str_starts_with($path, '/studio') || str_starts_with($path, '/installation')
         || $path === '/' || $path === '/envoyer') {
