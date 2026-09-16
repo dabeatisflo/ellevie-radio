@@ -14,7 +14,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - name: Check out the verified Studio source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -35,7 +34,6 @@ jobs:
           SSHPASS: ${{ secrets.OVH_SFTP_PASSWORD }}
         run: |
           set -euo pipefail
-
           test -n "$OVH_SFTP_HOST"
           test -n "$OVH_SFTP_USER"
           test -n "$OVH_SFTP_PASSWORD"
@@ -58,6 +56,7 @@ jobs:
           -mkdir ellevie-studio/public/iphone
           -mkdir ellevie-studio/public/iphone/assets
           put ovh-studio/public/iphone/index.html ellevie-studio/public/iphone/index.html
+          put ovh-studio/public/iphone/index.php ellevie-studio/public/iphone/index.php
           put ovh-studio/public/iphone/app.css ellevie-studio/public/iphone/app.css
           put ovh-studio/public/iphone/app.js ellevie-studio/public/iphone/app.js
           put ovh-studio/public/iphone/manifest.webmanifest ellevie-studio/public/iphone/manifest.webmanifest
@@ -80,13 +79,13 @@ jobs:
               "https://studio.ellevie.fr/?deploy=${GITHUB_SHA}-${attempt}" \
               | grep --fixed-strings --quiet 'form.js?v=11' \
               && curl --fail --silent --show-error \
-                --header 'Cache-Control: no-cache' \
-                "https://studio.ellevie.fr/iphone/?deploy=${GITHUB_SHA}-${attempt}" \
-                | grep --fixed-strings --quiet 'app.js?v=1.4.0' \
+              --header 'Cache-Control: no-cache' \
+              "https://studio.ellevie.fr/iphone/?deploy=${GITHUB_SHA}-${attempt}" \
+              | grep --fixed-strings --quiet 'app.js?v=1.4.0' \
               && curl --fail --silent --show-error \
-                --header 'Cache-Control: no-cache' \
-                "https://studio.ellevie.fr/iphone/manifest.webmanifest?deploy=${GITHUB_SHA}-${attempt}" \
-                | grep --fixed-strings --quiet '"display": "standalone"'; then
+              --header 'Cache-Control: no-cache' \
+              "https://studio.ellevie.fr/iphone/manifest.webmanifest?deploy=${GITHUB_SHA}-${attempt}" \
+              | grep --fixed-strings --quiet '"display": "standalone"'; then
               exit 0
             fi
             sleep 5
