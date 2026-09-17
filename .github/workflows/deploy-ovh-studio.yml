@@ -44,6 +44,7 @@ jobs:
             -o ConnectTimeout=20 \
             -o StrictHostKeyChecking=accept-new \
             "$OVH_SFTP_USER@$OVH_SFTP_HOST" <<'SFTP'
+          put ovh-studio/app/web_push.php ellevie-studio/app/web_push.php
           put ovh-studio/app/bootstrap.php ellevie-studio/app/bootstrap.php
           put ovh-studio/database/schema.sql ellevie-studio/database/schema.sql
           put ovh-studio/public/styles.css ellevie-studio/public/styles.css
@@ -83,9 +84,18 @@ jobs:
               && manifest_json="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/iphone/manifest.webmanifest?deploy=${GITHUB_SHA}-${attempt}")" \
-              && [[ "$root_html" == *'form.js?v=11'* ]] \
-              && [[ "$iphone_html" == *'app.js?v=1.4.1'* ]] \
-              && [[ "$manifest_json" == *'"display": "standalone"'* ]]; then
+              && worker_js="$(curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache' \
+              "https://studio.ellevie.fr/iphone/sw.js?deploy=${GITHUB_SHA}-${attempt}")" \
+              && push_json="$(curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache' \
+              "https://studio.ellevie.fr/api/listener/web-push-key?deploy=${GITHUB_SHA}-${attempt}")" \
+              && push_key="$(jq -r '.publicKey // empty' <<<"$push_json")" \
+              && [[ "$root_html" == *'form.js?v=12'* ]] \
+              && [[ "$iphone_html" == *'app.js?v=1.5.0'* ]] \
+              && [[ "$manifest_json" == *'"display": "standalone"'* ]] \
+              && [[ "$worker_js" == *"ellevie-iphone-v1.5.0"* ]] \
+              && [[ "$push_key" =~ ^[A-Za-z0-9_-]{87}$ ]]; then
               exit 0
             fi
             sleep 5
