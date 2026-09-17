@@ -12,6 +12,7 @@ const VOICE_MAX_SECONDS = 30;
 const VOICE_MAX_BYTES = 3145728;
 
 require_once __DIR__ . '/filter.php';
+require_once __DIR__ . '/web_push.php';
 
 function app_config(): array
 {
@@ -418,6 +419,28 @@ function ensure_studio_push_schema(): void
             updated_at BIGINT UNSIGNED NOT NULL,
             UNIQUE KEY uq_studio_push_token (expo_token),
             INDEX idx_studio_push_enabled (enabled, updated_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+    $ready = true;
+}
+
+function ensure_web_push_schema(): void
+{
+    static $ready = false;
+    if ($ready) {
+        return;
+    }
+
+    db()->exec(
+        'CREATE TABLE IF NOT EXISTS listener_web_push_subscriptions (
+            endpoint_hash CHAR(64) NOT NULL PRIMARY KEY,
+            user_id CHAR(36) NOT NULL,
+            endpoint TEXT NOT NULL,
+            p256dh VARCHAR(128) NOT NULL,
+            auth_secret VARCHAR(64) NOT NULL,
+            created_at BIGINT UNSIGNED NOT NULL,
+            updated_at BIGINT UNSIGNED NOT NULL,
+            INDEX idx_listener_web_push_user (user_id, updated_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
     );
     $ready = true;
