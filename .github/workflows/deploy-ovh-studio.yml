@@ -1,6 +1,11 @@
 name: Deploy Ellevie Studio to OVH
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/deploy-ovh-studio.yml
   workflow_dispatch:
 
 permissions:
@@ -127,3 +132,34 @@ jobs:
           done
           echo 'The upload completed, but the expected live version was not visible.' >&2
           exit 1
+
+
+      - name: Smoke test the password reset endpoint
+        run: |
+          set -euo pipefail
+          cookie_jar="$(mktemp)"
+          response_file="$(mktemp)"
+          trap 'rm -f "$cookie_jar" "$response_file"' EXIT
+
+          config_json="$(curl --fail --silent --show-error \
+            --cookie-jar "$cookie_jar" \
+            --header 'Cache-Control: no-cache' \
+            'https://studio.ellevie.fr/api/config')"
+          form_token="$(jq -r '.formToken // empty' <<<"$config_json")"
+          test -n "$form_token"
+
+          payload="$(jq -n \
+            --arg token "$form_token" \
+            --arg email "deployment-smoke-${GITHUB_SHA}@invalid.example" \
+            '{accountType: "listener", email: $email, formToken: $token}')"
+          status="$(curl --silent --show-error \
+            --output "$response_file" \
+            --write-out '%{http_code}' \
+            --cookie "$cookie_jar" \
+            --header 'Origin: https://studio.ellevie.fr' \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            'https://studio.ellevie.fr/api/password-reset/request')"
+
+          test "$status" = '202'
+          jq -e '.ok == true' "$response_file" >/dev/null
