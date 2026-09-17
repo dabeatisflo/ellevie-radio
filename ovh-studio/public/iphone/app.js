@@ -64,12 +64,18 @@ const installButton = document.querySelector('#install-button');
 const installSheet = document.querySelector('#install-sheet');
 const installClose = document.querySelector('#install-close');
 const messagesFrame = document.querySelector('#messages-frame');
+const pushButton = document.querySelector('#push-button');
+const pushStatus = document.querySelector('#push-status');
 
 let activeTab = 'direct';
 let selectedProgrammeGroup = getCurrentGroup().id;
 let deferredInstallPrompt = null;
 let playbackRequested = false;
 let messagesFramePromise = null;
+let listenerAuthenticated = false;
+let webPushRegistration = null;
+let webPushSubscription = null;
+let webPushBusy = false;
 
 async function loadMessagesFrame() {
   if (messagesFrame.srcdoc || messagesFramePromise) return messagesFramePromise;
@@ -310,6 +316,164 @@ function isStandalone() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
 
+function setPushUi(label, enabled = false, busy = false) {
+  pushButton.hidden = false;
+  pushButton.disabled = busy;
+  pushButton.setAttribute('aria-pressed', String(enabled));
+  pushStatus.textContent = label;
+  const icon = pushButton.querySelector('.push-button-icon');
+  if (icon) icon.textContent = enabled ? '●' : '○';
+}
+
+function urlBase64ToUint8Array(value) {
+  const padding = '='.repeat((4 - (value.length % 4)) % 4);
+  const decoded = atob((value + padding).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(decoded, (character) => character.charCodeAt(0));
+}
+
+async function getWebPushRegistration() {
+  if (webPushRegistration) return webPushRegistration;
+  webPushRegistration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+  await navigator.serviceWorker.ready;
+  return webPushRegistration;
+}
+
+async function syncWebPushSubscription(subscription, enabled) {
+  const response = await fetch('/api/listener/web-push-subscription', {
+    method: enabled ? 'POST' : 'DELETE',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscription: subscription.toJSON() })
+  });
+  const result = await response.json().catch(() => ({ ok: false }));
+  if (response.status === 401) {
+    listenerAuthenticated = false;
+    throw new Error('Connectez-vous d’abord');
+  }
+  if (!response.ok || !result.ok) {
+    throw new Error(result.error || 'Synchronisation impossible');
+  }
+}
+
+async function initializeWebPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    setPushUi('Non compatible', false, true);
+    return;
+  }
+  if (!isStandalone()) {
+    setPushUi('Installer d’abord');
+    return;
+  }
+  try {
+    const registration = await getWebPushRegistration();
+    webPushSubscription = await registration.pushManager.getSubscription();
+    if (webPushSubscription && Notification.permission === 'granted') {
+      setPushUi(listenerAuthenticated ? 'Activées' : 'Se connecter', listenerAuthenticated);
+      if (listenerAuthenticated) await syncWebPushSubscription(webPushSubscription, true);
+    } else if (Notification.permission === 'denied') {
+      setPushUi('Bloquées', false, true);
+    } else {
+      setPushUi(listenerAuthenticated ? 'Activer' : 'Se connecter');
+    }
+  } catch {
+    setPushUi('Indisponibles', false, true);
+  }
+}
+
+async function enableWebPush() {
+  const keyResponse = await fetch('/api/listener/web-push-key', {
+    credentials: 'same-origin',
+    cache: 'no-store'
+  });
+  const keyResult = await keyResponse.json();
+  if (!keyResponse.ok || !keyResult.publicKey) throw new Error('Clé de notification indisponible');
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') throw new Error('Notifications non autorisées');
+  const registration = await getWebPushRegistration();
+  const existing = await registration.pushManager.getSubscription();
+  webPushSubscription = existing || await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(keyResult.publicKey)
+  });
+  await syncWebPushSubscription(webPushSubscription, true);
+}
+
+async function toggleWebPush() {
+  if (webPushBusy) return;
+  if (!isStandalone()) {
+    installSheet.hidden = false;
+    installClose.focus();
+    return;
+  }
+  if (!listenerAuthenticated) {
+    setPushUi('Connectez-vous d’abord');
+    return;
+  }
+  webPushBusy = true;
+  setPushUi('Un instant…', Boolean(webPushSubscription), true);
+  try {
+    if (webPushSubscription) {
+      await syncWebPushSubscription(webPushSubscription, false);
+      await webPushSubscription.unsubscribe();
+      webPushSubscription = null;
+      setPushUi('Activer');
+    } else {
+      await enableWebPush();
+      setPushUi('Activées', true);
+    }
+  } catch (error) {
+    const label = error?.message === 'Connectez-vous d’abord'
+      ? error.message
+      : (Notification.permission === 'denied' ? 'Bloquées' : 'Réessayer');
+    setPushUi(label, false, Notification.permission === 'denied');
+  } finally {
+    webPushBusy = false;
+  }
+}
+
+async function clearWebPushForLogout() {
+  if (webPushSubscription) {
+    await syncWebPushSubscription(webPushSubscription, false).catch(() => null);
+    await webPushSubscription.unsubscribe().catch(() => null);
+    webPushSubscription = null;
+  }
+  listenerAuthenticated = false;
+  setPushUi(isStandalone() ? 'Se connecter' : 'Installer d’abord');
+}
+
+pushButton.addEventListener('click', () => void toggleWebPush());
+
+window.addEventListener('message', async (event) => {
+  if (event.source !== messagesFrame.contentWindow || event.origin !== location.origin) return;
+  const message = event.data;
+  if (!message || message.channel !== 'ellevie-messages') return;
+  if (message.type === 'listenerWillLogout') {
+    await clearWebPushForLogout();
+    messagesFrame.contentWindow?.postMessage({
+      channel: 'ellevie-messages',
+      type: 'listenerWebPushCleared',
+      requestId: message.requestId
+    }, location.origin);
+    return;
+  }
+  if (message.type !== 'listenerAuthState') return;
+  listenerAuthenticated = message.loggedIn === true;
+  if (!isStandalone()) {
+    setPushUi('Installer d’abord');
+    return;
+  }
+  if (!webPushSubscription) {
+    setPushUi(listenerAuthenticated ? 'Activer' : 'Se connecter');
+    return;
+  }
+  if (!listenerAuthenticated) {
+    setPushUi('Se connecter');
+    return;
+  }
+  setPushUi('Activées', true);
+  void syncWebPushSubscription(webPushSubscription, true).catch(() => setPushUi('Réessayer'));
+});
+
 function closeInstallSheet() {
   installSheet.hidden = true;
   installButton.focus();
@@ -342,11 +506,7 @@ window.addEventListener('appinstalled', () => {
   installButton.hidden = true;
 });
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => null);
-  });
-}
+window.addEventListener('load', () => void initializeWebPush());
 
 renderProgrammeTabs();
 renderProgrammes(selectedProgrammeGroup);
