@@ -89,6 +89,15 @@ try {
         require_allowed_origin();
         change_studio_password();
     }
+    if ($path === '/api/studio/recovery-email' && $method === 'GET') {
+        require_studio_session();
+        get_studio_recovery_email();
+    }
+    if ($path === '/api/studio/recovery-email' && $method === 'POST') {
+        require_allowed_origin();
+        require_studio_session();
+        change_studio_recovery_email();
+    }
     if ($path === '/api/studio/push-subscription' && $method === 'POST') {
         require_allowed_origin();
         require_studio_session();
@@ -336,7 +345,7 @@ function request_password_reset(): never
         }
     } elseif (admin_password_hash() !== null) {
         try {
-            $recipient = password_reset_mail_settings()['studio_recovery_email'];
+            $recipient = studio_recovery_email();
         } catch (Throwable $error) {
             error_log('Ellevie password reset mail configuration error: ' . $error->getMessage());
         }
@@ -1234,6 +1243,63 @@ function studio_login(): never
     cleanup_expired_data();
     create_studio_session($operatorName);
     json_response(['ok' => true, 'operatorName' => $operatorName]);
+}
+
+
+function get_studio_recovery_email(): never
+{
+    $email = studio_recovery_email();
+    json_response([
+        'ok' => true,
+        'configured' => $email !== null,
+        'email' => $email,
+    ]);
+}
+
+function change_studio_recovery_email(): never
+{
+    ensure_password_reset_schema();
+    $input = request_json();
+    if (!rate_limit(client_hash('studio-recovery-email'), 'studio-recovery-email', 5, 900)) {
+        json_response(['ok' => false, 'error' => 'Trop de tentatives. Réessayez dans 15 minutes.'], 429);
+    }
+
+    $email = normalize_email((string) ($input['email'] ?? ''));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 191) {
+        json_response(['ok' => false, 'error' => 'Saisissez une adresse e-mail valide.'], 400);
+    }
+    $storedHash = admin_password_hash();
+    if ($storedHash === null
+        || !password_verify((string) ($input['currentPassword'] ?? ''), $storedHash)) {
+        json_response(['ok' => false, 'error' => 'Le mot de passe actuel est incorrect.'], 401);
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $save = $pdo->prepare(
+            "INSERT INTO settings (setting_key, setting_value, updated_at)
+             VALUES ('studio_recovery_email', ?, ?)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = VALUES(updated_at)"
+        );
+        $save->execute([$email, now()]);
+        $pdo->exec("DELETE FROM password_reset_tokens WHERE account_type = 'studio'");
+        $audit = $pdo->prepare(
+            "INSERT INTO audit_log (action, message_id, created_at)
+             VALUES ('studio-recovery-email:changed', NULL, ?)"
+        );
+        $audit->execute([now()]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        $pdo->rollBack();
+        throw $error;
+    }
+
+    json_response([
+        'ok' => true,
+        'email' => $email,
+        'message' => "L’adresse de récupération du Studio a été enregistrée.",
+    ]);
 }
 
 function change_studio_password(): never

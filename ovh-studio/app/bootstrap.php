@@ -231,9 +231,6 @@ function password_reset_mail_settings(): array
     $mail = is_array($config['mail'] ?? null) ? $config['mail'] : [];
     $fromAddress = normalize_email((string) ($mail['from_address'] ?? 'no-reply@ellevie.fr'));
     $fromName = trim((string) ($mail['from_name'] ?? 'Ellevie Radio'));
-    $studioRecoveryEmail = normalize_email((string) (
-        $mail['studio_recovery_email'] ?? $config['studio_recovery_email'] ?? ''
-    ));
 
     if (!filter_var($fromAddress, FILTER_VALIDATE_EMAIL) || strlen($fromAddress) > 191) {
         throw new RuntimeException("L'adresse d'expédition des e-mails de récupération est invalide.");
@@ -245,10 +242,28 @@ function password_reset_mail_settings(): array
     return [
         'from_address' => $fromAddress,
         'from_name' => $fromName,
-        'studio_recovery_email' => filter_var($studioRecoveryEmail, FILTER_VALIDATE_EMAIL)
-            ? $studioRecoveryEmail
-            : null,
     ];
+}
+
+function studio_recovery_email(): ?string
+{
+    $statement = db()->prepare(
+        "SELECT setting_value FROM settings WHERE setting_key = 'studio_recovery_email' LIMIT 1"
+    );
+    $statement->execute();
+    $stored = normalize_email((string) ($statement->fetchColumn() ?: ''));
+    if (filter_var($stored, FILTER_VALIDATE_EMAIL) && strlen($stored) <= 191) {
+        return $stored;
+    }
+
+    $config = app_config();
+    $mail = is_array($config['mail'] ?? null) ? $config['mail'] : [];
+    $fallback = normalize_email((string) (
+        $mail['studio_recovery_email'] ?? $config['studio_recovery_email'] ?? ''
+    ));
+    return filter_var($fallback, FILTER_VALIDATE_EMAIL) && strlen($fallback) <= 191
+        ? $fallback
+        : null;
 }
 
 function send_password_reset_email(string $recipient, string $token, string $accountType): bool

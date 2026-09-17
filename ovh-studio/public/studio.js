@@ -25,6 +25,10 @@ const currentPasswordInput = document.querySelector("#current-password");
 const newPasswordInput = document.querySelector("#new-password");
 const confirmPasswordInput = document.querySelector("#confirm-password");
 const passwordStatus = document.querySelector("#password-status");
+const recoveryForm = document.querySelector("#recovery-form");
+const recoveryEmailInput = document.querySelector("#recovery-email");
+const recoveryCurrentPasswordInput = document.querySelector("#recovery-current-password");
+const recoveryStatus = document.querySelector("#recovery-status");
 
 let currentStatus = "active";
 let currentOperatorName = "";
@@ -110,6 +114,41 @@ passwordForm.addEventListener("submit", async (event) => {
   } catch (error) {
     passwordStatus.textContent = error.message;
     passwordStatus.className = "form-status is-error";
+  } finally {
+    submitButton.disabled = false;
+  }
+});
+
+
+recoveryForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  recoveryStatus.textContent = "Enregistrement…";
+  recoveryStatus.className = "form-status";
+  if (!recoveryForm.reportValidity()) return;
+
+  const submitButton = recoveryForm.querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  try {
+    const response = await apiFetch("/api/studio/recovery-email", {
+      method: "POST",
+      body: JSON.stringify({
+        email: recoveryEmailInput.value.trim(),
+        currentPassword: recoveryCurrentPasswordInput.value
+      })
+    });
+    if (response.statusCode === 401 && response.error === "Session expirée.") {
+      closeSettings();
+      showLogin(response.error);
+      return;
+    }
+    if (!response.ok) throw new Error(response.error || "Enregistrement impossible.");
+    recoveryEmailInput.value = response.email || recoveryEmailInput.value.trim();
+    recoveryCurrentPasswordInput.value = "";
+    recoveryStatus.textContent = response.message;
+    recoveryStatus.className = "form-status is-success";
+  } catch (error) {
+    recoveryStatus.textContent = error.message;
+    recoveryStatus.className = "form-status is-error";
   } finally {
     submitButton.disabled = false;
   }
@@ -594,16 +633,45 @@ function showLogin(message = "") {
 function openSettings() {
   settingsPanel.hidden = false;
   passwordStatus.textContent = "";
+  recoveryStatus.textContent = "";
   document.body.classList.add("has-dialog");
-  currentPasswordInput.focus();
+  void loadRecoveryEmail();
+  recoveryEmailInput.focus();
 }
 
 function closeSettings() {
   settingsPanel.hidden = true;
   passwordForm.reset();
+  recoveryForm.reset();
   passwordStatus.textContent = "";
+  recoveryStatus.textContent = "";
   document.body.classList.remove("has-dialog");
   settingsButton.focus();
+}
+
+
+async function loadRecoveryEmail() {
+  recoveryStatus.textContent = "Chargement…";
+  recoveryStatus.className = "form-status";
+  try {
+    const response = await apiFetch("/api/studio/recovery-email");
+    if (response.statusCode === 401) {
+      closeSettings();
+      showLogin("Votre session a expiré.");
+      return;
+    }
+    if (!response.ok) throw new Error(response.error || "Chargement impossible.");
+    recoveryEmailInput.value = response.email || "";
+    recoveryStatus.textContent = response.configured
+      ? "Adresse de récupération active."
+      : "Ajoutez une adresse pour activer « Mot de passe oublié ».";
+    recoveryStatus.className = response.configured
+      ? "form-status is-success"
+      : "form-status is-error";
+  } catch (error) {
+    recoveryStatus.textContent = error.message;
+    recoveryStatus.className = "form-status is-error";
+  }
 }
 
 function setDashboardError(message) {

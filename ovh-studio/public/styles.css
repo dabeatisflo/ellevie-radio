@@ -1331,22 +1331,22 @@ p {
   cursor: pointer;
 }
 
-#password-form {
+.settings-form {
   display: grid;
   gap: 0.55rem;
 }
 
-#password-form p {
+.settings-form p {
   margin-bottom: 0.5rem;
   color: var(--muted);
 }
 
-#password-form label {
+.settings-form label {
   margin-top: 0.4rem;
   font-weight: 800;
 }
 
-#password-form input,
+.settings-form input,
 .installation-card input {
   width: 100%;
   border: 1px solid var(--line);
@@ -1356,20 +1356,33 @@ p {
   color: var(--ink);
 }
 
-#password-form input:focus,
+.settings-form input:focus,
 .installation-card input:focus {
   border-color: var(--red);
   outline: none;
   box-shadow: 0 0 0 0.2rem rgba(237, 0, 61, 0.12);
 }
 
-#password-form small {
+.settings-form small {
   color: var(--muted);
   line-height: 1.4;
 }
 
-#password-form .primary-button {
+.settings-form .primary-button,
+.settings-form .secondary-button {
   margin-top: 0.7rem;
+}
+
+.settings-form h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.25rem;
+}
+
+.settings-divider {
+  height: 1px;
+  margin: 1.35rem 0;
+  background: var(--line);
 }
 
 .installation-page {

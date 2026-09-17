@@ -54,19 +54,24 @@ BELANGRIJK
 - De private map storage/voice-clips wordt automatisch aangemaakt.
 
 
-EENMALIGE OVH-MAILINSTELLING
-Voeg in de array van config.local.php op de server deze private instellingen toe
-(dit bestand blijft buiten GitHub en wordt bij deployments niet overschreven):
+EENMALIGE STUDIO-INSTELLING
+1. Meld aan op https://studio.ellevie.fr/studio met het huidige paswoord.
+2. Open Paramètres.
+3. Vul bij "Adresse de récupération" het private beheeradres in.
+4. Bevestig met het huidige Studio-paswoord.
+
+Het adres wordt privé in de database bewaard en kan zowel op de website als in
+de Studio-app worden ingesteld. De standaard OVH-afzender is
+no-reply@ellevie.fr. Alleen als OVH een andere afzender vereist, kan die privé
+in config.local.php worden ingesteld:
 
   'mail' => [
       'from_address' => 'no-reply@ellevie.fr',
       'from_name' => 'Ellevie Radio',
-      'studio_recovery_email' => 'VUL_HIER_HET_BEHEERADRES_IN',
   ],
 
-Het laatste adres ontvangt uitsluitend de resetlink voor het gedeelde
-Studio-account. Deel nooit een paswoord per e-mail of in config.local.php.
 De luisteraar ontvangt haar resetlink op het e-mailadres van haar eigen account.
+Deel nooit een paswoord per e-mail of in config.local.php.
 
 NA HET UPLOADEN
 1. Open https://studio.ellevie.fr/envoyer en maak één testaccount.

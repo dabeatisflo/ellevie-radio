@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#a8002a">
     <title>Studio — Ellevie</title>
     <link rel="stylesheet" href="/styles.css?v=12">
-    <script src="/studio.js?v=11" defer></script>
+    <script src="/studio.js?v=12" defer></script>
   </head>
   <body class="studio-page">
     <main>
@@ -88,7 +88,19 @@
               </div>
               <button id="settings-close" class="icon-button" type="button" aria-label="Fermer">×</button>
             </div>
-            <form id="password-form">
+            <form id="recovery-form" class="settings-form">
+              <h3>Adresse de récupération</h3>
+              <p>Cette adresse reçoit les liens « Mot de passe oublié » du Studio. Elle reste privée.</p>
+              <label for="recovery-email">E-mail de l’équipe</label>
+              <input id="recovery-email" type="email" maxlength="191" autocomplete="email" inputmode="email" required>
+              <label for="recovery-current-password">Mot de passe Studio actuel</label>
+              <input id="recovery-current-password" type="password" autocomplete="current-password" required>
+              <button class="secondary-button" type="submit">Enregistrer l’adresse de récupération</button>
+              <p id="recovery-status" class="form-status" role="status" aria-live="polite"></p>
+            </form>
+            <div class="settings-divider" role="separator"></div>
+            <form id="password-form" class="settings-form">
+              <h3>Mot de passe Studio</h3>
               <p>Modifiez ici le mot de passe utilisé pour accéder au studio.</p>
               <label for="current-password">Mot de passe actuel</label>
               <input id="current-password" type="password" autocomplete="current-password" required>
