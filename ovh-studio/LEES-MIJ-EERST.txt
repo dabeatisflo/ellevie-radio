@@ -1,4 +1,4 @@
-ELLEVIE STUDIO — COMPLETE ANDROID-UPDATE 1.4.0
+ELLEVIE STUDIO — ANDROID 1.4.0 + IPHONE-WEBAPP 1.5.0
 Accounts, geschiedenis, voiceclips, antwoorden en pushmeldingen
 
 WAT IS NIEUW?
@@ -25,6 +25,13 @@ WAT IS NIEUW?
   van het Studio-team.
 - De eerste druk op de rode voiceclipknop handelt de Android-microfoon-
   toestemming af en start daarna automatisch de opname.
+- Op iPhone is dezelfde radio beschikbaar als installeerbare webapp via
+  https://studio.ellevie.fr/iphone/ — zonder App Store of betaald Apple-account.
+- De iPhone-webapp bevat live radio, programma's, presentatrices, privéberichten,
+  voiceclips, Studio-antwoorden en de volledige geschiedenis van 30 dagen.
+- Na installatie via Safari kan een ingelogde luisteraar meldingen inschakelen.
+  Een Studio-antwoord komt dan ook binnen wanneer de webapp gesloten is.
+- Bij uitloggen worden de iPhone-melding en de serverkoppeling veilig verwijderd.
 
 WAAR UPLOADEN MET FILEZILLA?
 1. Pak dit ZIP-bestand eerst uit op de computer.
@@ -56,5 +63,16 @@ NA HET UPLOADEN
 9. Open Studio tegelijk in twee sessies met verschillende voornamen. Klik in
    sessie één op een antwoordvak en controleer dat sessie twee het gesprek als
    vergrendeld toont.
+
+IPHONE-WEBAPP TESTEN
+1. Open https://studio.ellevie.fr/iphone/ in Safari op een iPhone met iOS 16.4
+   of nieuwer.
+2. Tik op Deel en daarna op "Zet op beginscherm". Open de app vanaf het nieuwe
+   beginschermicoon; meldingen werken bewust alleen in deze geïnstalleerde vorm.
+3. Open Berichten, maak een account of meld je aan en tik op Notifications.
+4. Kies Sta toe wanneer iOS om toestemming vraagt.
+5. Stuur een bericht, sluit de webapp en antwoord vanuit Studio. De auditrice
+   hoort nu een melding te ontvangen die rechtstreeks naar Berichten opent.
+6. Log uit en controleer dat de melding op dit toestel is uitgeschakeld.
 
 Er staan geen databasewachtwoorden of andere geheime gegevens in deze ZIP.
