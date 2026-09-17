@@ -21,6 +21,12 @@ try {
             'account' => $listener ? listener_public_user($listener) : null,
         ]);
     }
+    if ($path === '/api/listener/web-push-key' && $method === 'GET') {
+        json_response([
+            'ok' => true,
+            'publicKey' => web_push_vapid_keys()['public'],
+        ]);
+    }
 
     if ($path === '/api/account/register' && $method === 'POST') {
         require_allowed_origin();
@@ -52,6 +58,11 @@ try {
         require_allowed_origin();
         $listener = require_listener_user();
         update_listener_push_subscription($listener, $method === 'POST');
+    }
+    if ($path === '/api/listener/web-push-subscription' && in_array($method, ['POST', 'DELETE'], true)) {
+        require_allowed_origin();
+        $listener = require_listener_user();
+        update_listener_web_push_subscription($listener, $method === 'POST');
     }
     if ($path === '/api/install' && $method === 'POST') {
         require_allowed_origin();
@@ -488,6 +499,52 @@ function update_listener_push_subscription(array $user, bool $enabled): never
     json_response(['ok' => true, 'enabled' => true]);
 }
 
+function update_listener_web_push_subscription(array $user, bool $enabled): never
+{
+    ensure_web_push_schema();
+    $input = request_json();
+    if (!rate_limit(hash('sha256', 'web-push:' . (string) $user['id']), 'web-push', 30, 3600)) {
+        json_response(['ok' => false, 'error' => 'Trop de demandes de notification. Réessayez plus tard.'], 429);
+    }
+    $subscription = is_array($input['subscription'] ?? null) ? $input['subscription'] : [];
+    $endpoint = trim((string) ($subscription['endpoint'] ?? ''));
+    $keys = is_array($subscription['keys'] ?? null) ? $subscription['keys'] : [];
+    $p256dh = trim((string) ($keys['p256dh'] ?? ''));
+    $auth = trim((string) ($keys['auth'] ?? ''));
+    if (!web_push_endpoint_allowed($endpoint)) {
+        json_response(['ok' => false, 'error' => 'Abonnement de notification invalide.'], 400);
+    }
+    $endpointHash = hash('sha256', $endpoint);
+    if (!$enabled) {
+        $delete = db()->prepare(
+            'DELETE FROM listener_web_push_subscriptions WHERE endpoint_hash = ? AND user_id = ?'
+        );
+        $delete->execute([$endpointHash, $user['id']]);
+        json_response(['ok' => true, 'enabled' => false]);
+    }
+
+    try {
+        $publicKey = web_push_base64url_decode($p256dh);
+        $authSecret = web_push_base64url_decode($auth);
+    } catch (Throwable) {
+        json_response(['ok' => false, 'error' => 'Clés de notification invalides.'], 400);
+    }
+    if (strlen($publicKey) !== 65 || $publicKey[0] !== "\x04" || strlen($authSecret) !== 16) {
+        json_response(['ok' => false, 'error' => 'Clés de notification invalides.'], 400);
+    }
+
+    $timestamp = now();
+    $save = db()->prepare(
+        'INSERT INTO listener_web_push_subscriptions
+           (endpoint_hash, user_id, endpoint, p256dh, auth_secret, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), endpoint = VALUES(endpoint),
+           p256dh = VALUES(p256dh), auth_secret = VALUES(auth_secret), updated_at = VALUES(updated_at)'
+    );
+    $save->execute([$endpointHash, $user['id'], $endpoint, $p256dh, $auth, $timestamp, $timestamp]);
+    json_response(['ok' => true, 'enabled' => true]);
+}
+
 function notify_listener_devices(
     string $messageId,
     string $userId,
@@ -530,6 +587,60 @@ function notify_listener_devices(
     } catch (Throwable $error) {
         // Une notification échouée ne doit jamais annuler une réponse déjà enregistrée.
         error_log('Ellevie listener push error: ' . $error->getMessage());
+    }
+}
+
+function notify_listener_web_devices(
+    string $messageId,
+    string $userId,
+    string $operatorName,
+    string $messageBody
+): void {
+    try {
+        ensure_web_push_schema();
+        $statement = db()->prepare(
+            'SELECT endpoint_hash, endpoint, p256dh, auth_secret
+             FROM listener_web_push_subscriptions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 10'
+        );
+        $statement->execute([$userId]);
+        $subscriptions = $statement->fetchAll();
+        if ($subscriptions === []) {
+            return;
+        }
+
+        $cleanOperator = trim(preg_replace('/\s+/u', ' ', $operatorName) ?? '') ?: 'Studio';
+        $cleanBody = trim(preg_replace('/\s+/u', ' ', $messageBody) ?? '');
+        $cleanBody = function_exists('mb_substr') ? mb_substr($cleanBody, 0, 160) : substr($cleanBody, 0, 160);
+        $notification = [
+            'title' => 'Réponse de ' . $cleanOperator,
+            'body' => $cleanBody,
+            'tag' => 'studio-reply-' . $messageId,
+            'url' => '/iphone/#messages',
+        ];
+
+        foreach ($subscriptions as $subscription) {
+            try {
+                $status = web_push_send(
+                    (string) $subscription['endpoint'],
+                    (string) $subscription['p256dh'],
+                    (string) $subscription['auth_secret'],
+                    $notification
+                );
+                if (in_array($status, [404, 410], true)) {
+                    $delete = db()->prepare(
+                        'DELETE FROM listener_web_push_subscriptions WHERE endpoint_hash = ?'
+                    );
+                    $delete->execute([$subscription['endpoint_hash']]);
+                } elseif ($status < 200 || $status >= 300) {
+                    error_log('Ellevie iPhone push returned HTTP ' . $status . '.');
+                }
+            } catch (Throwable $error) {
+                error_log('Ellevie iPhone push delivery error: ' . $error->getMessage());
+            }
+        }
+    } catch (Throwable $error) {
+        // A failed notification must never cancel an already-saved reply.
+        error_log('Ellevie iPhone push error: ' . $error->getMessage());
     }
 }
 
@@ -1153,6 +1264,12 @@ function reply_to_message(string $messageId, array $session): never
     }
     if ((string) ($message['user_id'] ?? '') !== '') {
         notify_listener_devices(
+            $messageId,
+            (string) $message['user_id'],
+            (string) $session['operator_name'],
+            $body
+        );
+        notify_listener_web_devices(
             $messageId,
             (string) $message['user_id'],
             (string) $session['operator_name'],
