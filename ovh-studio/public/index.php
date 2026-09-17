@@ -41,6 +41,14 @@ try {
         logout_listener();
         json_response(['ok' => true]);
     }
+    if ($path === '/api/password-reset/request' && $method === 'POST') {
+        require_allowed_origin();
+        request_password_reset();
+    }
+    if ($path === '/api/password-reset/confirm' && $method === 'POST') {
+        require_allowed_origin();
+        confirm_password_reset();
+    }
 
     if ($path === '/api/messages' && $method === 'POST') {
         require_allowed_origin();
@@ -126,6 +134,7 @@ try {
     $pages = [
         '/' => 'envoyer.html',
         '/envoyer' => 'envoyer.html',
+        '/mot-de-passe-oublie' => 'mot-de-passe-oublie.html',
         '/studio' => 'studio.html',
         '/confidentialite' => 'confidentialite.html',
         '/installation' => 'installation.html',
@@ -258,6 +267,264 @@ function listener_login(): never
     create_listener_session((string) $user['id']);
     cleanup_expired_data();
     json_response(['ok' => true, 'account' => listener_public_user($user)]);
+}
+
+
+function password_reset_account_type(array $input): string
+{
+    $accountType = strtolower(trim((string) ($input['accountType'] ?? '')));
+    if (!in_array($accountType, ['listener', 'studio'], true)) {
+        json_response(['ok' => false, 'error' => 'Type de compte invalide.'], 400);
+    }
+    return $accountType;
+}
+
+function finish_password_reset_request(float $startedAt): never
+{
+    $minimumSeconds = 0.35;
+    $elapsed = microtime(true) - $startedAt;
+    if ($elapsed < $minimumSeconds) {
+        usleep((int) (($minimumSeconds - $elapsed) * 1000000));
+    }
+    json_response([
+        'ok' => true,
+        'message' => 'Si un compte correspond, un lien valable 30 minutes vient d’être envoyé.',
+    ], 202);
+}
+
+function request_password_reset(): never
+{
+    $startedAt = microtime(true);
+    ensure_password_reset_schema();
+    $input = request_json();
+    require_form_token($input);
+    $accountType = password_reset_account_type($input);
+
+    if (!rate_limit(client_hash('password-reset-request'), 'password-reset-client', 5, 3600)) {
+        json_response(['ok' => false, 'error' => 'Trop de demandes. Réessayez dans une heure.'], 429);
+    }
+
+    $email = normalize_email((string) ($input['email'] ?? ''));
+    if ($accountType === 'listener'
+        && (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 191)) {
+        json_response(['ok' => false, 'error' => 'Saisissez une adresse e-mail valide.'], 400);
+    }
+
+    $identity = $accountType === 'studio' ? 'studio' : $email;
+    $rateSecret = (string) (app_config()['ip_hash_secret'] ?? '');
+    $identityKey = hash_hmac('sha256', "password-reset\n{$accountType}\n{$identity}", $rateSecret);
+    if (!rate_limit($identityKey, 'password-reset-identity', 3, 3600)) {
+        finish_password_reset_request($startedAt);
+    }
+
+    $pdo = db();
+    $cleanup = $pdo->prepare(
+        'DELETE FROM password_reset_tokens
+         WHERE expires_at <= ? OR (used_at IS NOT NULL AND used_at <= ?)'
+    );
+    $cleanup->execute([now(), now() - 86400]);
+
+    $recipient = null;
+    $userId = null;
+    if ($accountType === 'listener') {
+        $statement = $pdo->prepare('SELECT id, email FROM users WHERE email = ? LIMIT 1');
+        $statement->execute([$email]);
+        $user = $statement->fetch();
+        if ($user) {
+            $userId = (string) $user['id'];
+            $recipient = (string) $user['email'];
+        }
+    } elseif (admin_password_hash() !== null) {
+        try {
+            $recipient = password_reset_mail_settings()['studio_recovery_email'];
+        } catch (Throwable $error) {
+            error_log('Ellevie password reset mail configuration error: ' . $error->getMessage());
+        }
+    }
+
+    if ($recipient === null || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+        if ($accountType === 'studio') {
+            error_log('Ellevie Studio recovery email is not configured.');
+        }
+        finish_password_reset_request($startedAt);
+    }
+
+    $token = random_token();
+    $tokenHash = hash('sha256', $token);
+    $timestamp = now();
+    $pdo->beginTransaction();
+    try {
+        if ($accountType === 'listener') {
+            $delete = $pdo->prepare(
+                "DELETE FROM password_reset_tokens
+                 WHERE account_type = 'listener' AND user_id = ? AND used_at IS NULL"
+            );
+            $delete->execute([$userId]);
+        } else {
+            $pdo->exec(
+                "DELETE FROM password_reset_tokens
+                 WHERE account_type = 'studio' AND used_at IS NULL"
+            );
+        }
+        $insert = $pdo->prepare(
+            'INSERT INTO password_reset_tokens
+             (token_hash, account_type, user_id, created_at, expires_at, used_at)
+             VALUES (?, ?, ?, ?, ?, NULL)'
+        );
+        $insert->execute([
+            $tokenHash,
+            $accountType,
+            $userId,
+            $timestamp,
+            $timestamp + PASSWORD_RESET_SECONDS,
+        ]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        $pdo->rollBack();
+        throw $error;
+    }
+
+    try {
+        $sent = send_password_reset_email($recipient, $token, $accountType);
+    } catch (Throwable $error) {
+        $sent = false;
+        error_log('Ellevie password reset email error: ' . $error->getMessage());
+    }
+    if (!$sent) {
+        $delete = $pdo->prepare('DELETE FROM password_reset_tokens WHERE token_hash = ?');
+        $delete->execute([$tokenHash]);
+        error_log("Ellevie password reset email could not be sent for {$accountType}.");
+    }
+
+    finish_password_reset_request($startedAt);
+}
+
+function confirm_password_reset(): never
+{
+    ensure_password_reset_schema();
+    ensure_studio_push_schema();
+    ensure_web_push_schema();
+    ensure_collaboration_push_schema();
+
+    $input = request_json();
+    require_form_token($input);
+    $accountType = password_reset_account_type($input);
+    if (!rate_limit(client_hash('password-reset-confirm'), 'password-reset-confirm', 10, 900)) {
+        json_response(['ok' => false, 'error' => 'Trop de tentatives. Réessayez dans 15 minutes.'], 429);
+    }
+
+    $token = trim((string) ($input['token'] ?? ''));
+    if (!preg_match('/^[A-Za-z0-9_-]{43}$/', $token)) {
+        json_response(['ok' => false, 'error' => 'Ce lien est invalide ou a expiré.'], 400);
+    }
+    $password = (string) ($input['password'] ?? '');
+    $confirmation = (string) ($input['confirmation'] ?? '');
+    if ($password !== $confirmation) {
+        json_response(['ok' => false, 'error' => 'Les deux mots de passe ne correspondent pas.'], 400);
+    }
+    if ($error = validate_new_password($password)) {
+        json_response(['ok' => false, 'error' => $error], 400);
+    }
+
+    $tokenHash = hash('sha256', $token);
+    $timestamp = now();
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $select = $pdo->prepare(
+            'SELECT token_hash, account_type, user_id, expires_at, used_at
+             FROM password_reset_tokens WHERE token_hash = ? FOR UPDATE'
+        );
+        $select->execute([$tokenHash]);
+        $reset = $select->fetch();
+        if (!$reset
+            || !hash_equals((string) $reset['account_type'], $accountType)
+            || $reset['used_at'] !== null
+            || (int) $reset['expires_at'] <= $timestamp) {
+            $pdo->rollBack();
+            json_response(['ok' => false, 'error' => 'Ce lien est invalide ou a expiré.'], 400);
+        }
+
+        if ($accountType === 'listener') {
+            $userId = (string) ($reset['user_id'] ?? '');
+            $selectUser = $pdo->prepare('SELECT password_hash FROM users WHERE id = ? FOR UPDATE');
+            $selectUser->execute([$userId]);
+            $user = $selectUser->fetch();
+            if (!$user) {
+                $pdo->rollBack();
+                json_response(['ok' => false, 'error' => 'Ce lien est invalide ou a expiré.'], 400);
+            }
+            if (password_verify($password, (string) $user['password_hash'])) {
+                $pdo->rollBack();
+                json_response(['ok' => false, 'error' => 'Choisissez un mot de passe différent.'], 400);
+            }
+
+            $update = $pdo->prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?');
+            $update->execute([make_password_hash($password), $timestamp, $userId]);
+            $deleteSessions = $pdo->prepare('DELETE FROM listener_sessions WHERE user_id = ?');
+            $deleteSessions->execute([$userId]);
+            $deletePush = $pdo->prepare('DELETE FROM listener_push_subscriptions WHERE user_id = ?');
+            $deletePush->execute([$userId]);
+            $deleteWebPush = $pdo->prepare('DELETE FROM listener_web_push_subscriptions WHERE user_id = ?');
+            $deleteWebPush->execute([$userId]);
+            $deleteOtherTokens = $pdo->prepare(
+                "DELETE FROM password_reset_tokens
+                 WHERE account_type = 'listener' AND user_id = ? AND token_hash <> ?"
+            );
+            $deleteOtherTokens->execute([$userId, $tokenHash]);
+        } else {
+            $selectPassword = $pdo->query(
+                "SELECT setting_value FROM settings
+                 WHERE setting_key = 'admin_password_hash' LIMIT 1 FOR UPDATE"
+            );
+            $storedHash = $selectPassword->fetchColumn();
+            if (!$storedHash) {
+                $pdo->rollBack();
+                json_response(['ok' => false, 'error' => 'Ce lien est invalide ou a expiré.'], 400);
+            }
+            if (password_verify($password, (string) $storedHash)) {
+                $pdo->rollBack();
+                json_response(['ok' => false, 'error' => 'Choisissez un mot de passe différent.'], 400);
+            }
+
+            $update = $pdo->prepare(
+                "UPDATE settings SET setting_value = ?, updated_at = ?
+                 WHERE setting_key = 'admin_password_hash'"
+            );
+            $update->execute([make_password_hash($password), $timestamp]);
+            $pdo->exec('DELETE FROM studio_claims');
+            $pdo->exec('DELETE FROM studio_sessions');
+            $pdo->exec('DELETE FROM studio_push_subscriptions');
+            $deleteOtherTokens = $pdo->prepare(
+                "DELETE FROM password_reset_tokens
+                 WHERE account_type = 'studio' AND token_hash <> ?"
+            );
+            $deleteOtherTokens->execute([$tokenHash]);
+        }
+
+        $useToken = $pdo->prepare('UPDATE password_reset_tokens SET used_at = ? WHERE token_hash = ?');
+        $useToken->execute([$timestamp, $tokenHash]);
+        $audit = $pdo->prepare(
+            'INSERT INTO audit_log (action, message_id, created_at) VALUES (?, NULL, ?)'
+        );
+        $audit->execute([$accountType . '-password:reset', $timestamp]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
+
+    if ($accountType === 'studio') {
+        setcookie(SESSION_COOKIE, '', cookie_options(1));
+    } else {
+        setcookie(LISTENER_SESSION_COOKIE, '', cookie_options(1));
+    }
+    json_response([
+        'ok' => true,
+        'message' => 'Votre mot de passe a été modifié. Reconnectez-vous sur vos appareils.',
+    ]);
 }
 
 function submit_message(): never

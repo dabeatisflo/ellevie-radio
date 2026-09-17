@@ -1533,3 +1533,37 @@ p {
     transition: none !important;
   }
 }
+
+.password-help-link {
+  justify-self: end;
+  margin-top: 0.15rem;
+  font-size: 0.84rem;
+}
+
+.reset-card {
+  padding-bottom: 1.2rem;
+}
+
+.reset-explanation {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.reset-card > .form-status,
+.reset-card #request-status,
+.reset-card #confirm-status {
+  margin-right: 1.4rem;
+  margin-left: 1.4rem;
+}
+
+.reset-footer {
+  padding: 1rem 1.4rem 0;
+}
+
+.reset-footer .text-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+}
+

@@ -2,6 +2,11 @@ ELLEVIE STUDIO — ANDROID 1.4.0 + IPHONE-WEBAPP 1.5.0
 Accounts, geschiedenis, voiceclips, antwoorden en pushmeldingen
 
 WAT IS NIEUW?
+- "Mot de passe oublié ?" werkt centraal voor luisteraars op de website,
+  Android-app en iPhone-webapp, en apart voor het gedeelde Studio-account.
+- Resetlinks zijn eenmalig, 30 minuten geldig en worden alleen gehasht bewaard.
+- Na een geslaagde reset worden bestaande sessies en toestelmeldingen
+  ingetrokken; daarna moet ieder toestel opnieuw aanmelden.
 - Luisteraars registreren en melden zich aan met e-mail en wachtwoord.
 - De app onthoudt de aanmelding gedurende 180 dagen.
 - De volledige privéconversatie blijft 30 dagen op de server beschikbaar,
@@ -48,6 +53,21 @@ BELANGRIJK
   veilig uitgebreid zodra de pagina na de upload voor het eerst opent.
 - De private map storage/voice-clips wordt automatisch aangemaakt.
 
+
+EENMALIGE OVH-MAILINSTELLING
+Voeg in de array van config.local.php op de server deze private instellingen toe
+(dit bestand blijft buiten GitHub en wordt bij deployments niet overschreven):
+
+  'mail' => [
+      'from_address' => 'no-reply@ellevie.fr',
+      'from_name' => 'Ellevie Radio',
+      'studio_recovery_email' => 'VUL_HIER_HET_BEHEERADRES_IN',
+  ],
+
+Het laatste adres ontvangt uitsluitend de resetlink voor het gedeelde
+Studio-account. Deel nooit een paswoord per e-mail of in config.local.php.
+De luisteraar ontvangt haar resetlink op het e-mailadres van haar eigen account.
+
 NA HET UPLOADEN
 1. Open https://studio.ellevie.fr/envoyer en maak één testaccount.
 2. Stuur één tekstbericht en één korte voiceclip.
@@ -76,3 +96,12 @@ IPHONE-WEBAPP TESTEN
 6. Log uit en controleer dat de melding op dit toestel is uitgeschakeld.
 
 Er staan geen databasewachtwoorden of andere geheime gegevens in deze ZIP.
+
+PASWOORDHERSTEL TESTEN
+1. Open https://studio.ellevie.fr/envoyer en tik op "Mot de passe oublié ?".
+2. Vraag een link aan voor een bestaand luisteraarsaccount.
+3. Open de e-mail, kies een nieuw paswoord en controleer dat de link daarna
+   niet opnieuw bruikbaar is.
+4. Controleer dat oude sessies op website, Android en iPhone zijn afgemeld.
+5. Herhaal via https://studio.ellevie.fr/studio voor het Studio-account en
+   controleer dat de mail op het private beheeradres aankomt.

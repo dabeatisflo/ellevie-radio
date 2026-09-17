@@ -7,6 +7,7 @@ const LISTENER_SESSION_COOKIE = 'ellevie_listener_session';
 const FORM_COOKIE = 'ellevie_form_token';
 const SESSION_SECONDS = 43200;
 const LISTENER_SESSION_SECONDS = 15552000;
+const PASSWORD_RESET_SECONDS = 1800;
 const STUDIO_CLAIM_SECONDS = 600;
 const VOICE_MAX_SECONDS = 30;
 const VOICE_MAX_BYTES = 3145728;
@@ -106,7 +107,7 @@ function require_allowed_origin(): void
 
 function secure_headers(string $path): void
 {
-    $allowSameOriginFrame = ($path === '/' || $path === '/envoyer');
+    $allowSameOriginFrame = ($path === '/' || $path === '/envoyer' || $path === '/mot-de-passe-oublie');
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: ' . ($allowSameOriginFrame ? 'SAMEORIGIN' : 'DENY'));
     header('Referrer-Policy: no-referrer');
@@ -116,7 +117,7 @@ function secure_headers(string $path): void
     header("Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors {$frameAncestors}; form-action 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:");
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
     if (str_starts_with($path, '/api/') || str_starts_with($path, '/studio') || str_starts_with($path, '/installation')
-        || $path === '/' || $path === '/envoyer') {
+        || $path === '/' || $path === '/envoyer' || $path === '/mot-de-passe-oublie') {
         header('Cache-Control: no-store');
         header('X-Robots-Tag: noindex, nofollow');
     }
@@ -221,6 +222,75 @@ function make_password_hash(string $password): string
 function normalize_email(string $email): string
 {
     return strtolower(trim($email));
+}
+
+
+function password_reset_mail_settings(): array
+{
+    $config = app_config();
+    $mail = is_array($config['mail'] ?? null) ? $config['mail'] : [];
+    $fromAddress = normalize_email((string) ($mail['from_address'] ?? 'no-reply@ellevie.fr'));
+    $fromName = trim((string) ($mail['from_name'] ?? 'Ellevie Radio'));
+    $studioRecoveryEmail = normalize_email((string) (
+        $mail['studio_recovery_email'] ?? $config['studio_recovery_email'] ?? ''
+    ));
+
+    if (!filter_var($fromAddress, FILTER_VALIDATE_EMAIL) || strlen($fromAddress) > 191) {
+        throw new RuntimeException("L'adresse d'expédition des e-mails de récupération est invalide.");
+    }
+    if ($fromName === '' || preg_match('/[\r\n]/', $fromName)) {
+        $fromName = 'Ellevie Radio';
+    }
+
+    return [
+        'from_address' => $fromAddress,
+        'from_name' => $fromName,
+        'studio_recovery_email' => filter_var($studioRecoveryEmail, FILTER_VALIDATE_EMAIL)
+            ? $studioRecoveryEmail
+            : null,
+    ];
+}
+
+function send_password_reset_email(string $recipient, string $token, string $accountType): bool
+{
+    if (!filter_var($recipient, FILTER_VALIDATE_EMAIL) || strlen($recipient) > 191) {
+        return false;
+    }
+    if (!preg_match('/^[A-Za-z0-9_-]{43}$/', $token)) {
+        return false;
+    }
+
+    $settings = password_reset_mail_settings();
+    $baseUrl = rtrim((string) (app_config()['base_url'] ?? ''), '/');
+    if (!preg_match('#^https://#i', $baseUrl)) {
+        throw new RuntimeException("L'adresse publique HTTPS est absente de la configuration.");
+    }
+
+    $type = $accountType === 'studio' ? 'studio' : 'listener';
+    $label = $type === 'studio' ? 'de l’espace Studio' : 'de votre compte auditrice';
+    $resetUrl = $baseUrl . '/mot-de-passe-oublie?type=' . rawurlencode($type)
+        . '&token=' . rawurlencode($token);
+    $subject = 'Ellevie - reinitialisation du mot de passe';
+    $body = "Bonjour,\r\n\r\n"
+        . "Une demande de nouveau mot de passe {$label} vient d’être effectuée.\r\n\r\n"
+        . "Ouvrez ce lien dans les 30 minutes :\r\n{$resetUrl}\r\n\r\n"
+        . "Ce lien ne fonctionne qu’une seule fois. Si vous n’avez rien demandé, "
+        . "ignorez simplement cet e-mail : votre mot de passe ne change pas.\r\n\r\n"
+        . "L’équipe Ellevie Radio\r\n";
+
+    $encodedName = function_exists('mb_encode_mimeheader')
+        ? mb_encode_mimeheader((string) $settings['from_name'], 'UTF-8', 'B', "\r\n")
+        : 'Ellevie Radio';
+    $headers = [
+        'From: ' . $encodedName . ' <' . $settings['from_address'] . '>',
+        'Reply-To: ' . $settings['from_address'],
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+        'X-Auto-Response-Suppress: All',
+    ];
+
+    return mail($recipient, $subject, $body, implode("\r\n", $headers));
 }
 
 function listener_public_user(array $user): array
@@ -577,6 +647,30 @@ function ensure_account_voice_schema(): void
         $release = $pdo->prepare('SELECT RELEASE_LOCK(?)');
         $release->execute([$lockName]);
     }
+}
+
+
+function ensure_password_reset_schema(): void
+{
+    static $ready = false;
+    if ($ready) {
+        return;
+    }
+
+    ensure_account_voice_schema();
+    db()->exec(
+        'CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            token_hash CHAR(64) NOT NULL PRIMARY KEY,
+            account_type VARCHAR(16) NOT NULL,
+            user_id CHAR(36) NULL,
+            created_at BIGINT UNSIGNED NOT NULL,
+            expires_at BIGINT UNSIGNED NOT NULL,
+            used_at BIGINT UNSIGNED NULL,
+            INDEX idx_password_reset_user (account_type, user_id, expires_at),
+            INDEX idx_password_reset_expiry (expires_at, used_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+    $ready = true;
 }
 
 function ensure_reply_schema(): void

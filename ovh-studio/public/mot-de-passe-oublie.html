@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr" data-password-reset-version="1">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ed003d">
+    <title>Mot de passe oublié — Ellevie</title>
+    <meta name="description" content="Réinitialisez en toute sécurité votre mot de passe Ellevie.">
+    <link rel="stylesheet" href="/styles.css?v=12">
+    <script src="/mot-de-passe-oublie.js?v=1" defer></script>
+  </head>
+  <body class="listener-page reset-page">
+    <main class="listener-shell">
+      <header class="brand-header" aria-label="Ellevie Radio">
+        <span class="brand-script">ellevie</span>
+        <span class="brand-tagline">Lady's First</span>
+      </header>
+
+      <section class="listener-card account-card reset-card" aria-labelledby="reset-title">
+        <div class="account-heading">
+          <p class="eyebrow">SÉCURITÉ DU COMPTE</p>
+          <h1 id="reset-title">Mot de passe oublié</h1>
+          <p id="reset-intro">Recevez un lien personnel et valable 30 minutes pour choisir un nouveau mot de passe.</p>
+        </div>
+
+        <div id="request-panel">
+          <form id="request-form" class="account-form" novalidate>
+            <p id="request-explanation" class="reset-explanation">Indiquez l’adresse e-mail de votre compte auditrice.</p>
+            <label id="request-email-label" for="request-email">Adresse e-mail</label>
+            <input id="request-email" type="email" maxlength="191" autocomplete="email" inputmode="email" required>
+            <button id="request-button" class="primary-button" type="submit">Envoyer le lien sécurisé</button>
+          </form>
+          <p id="request-status" class="form-status" role="status" aria-live="polite"></p>
+        </div>
+
+        <div id="confirm-panel" hidden>
+          <form id="confirm-form" class="account-form" novalidate>
+            <p class="reset-explanation">Choisissez un nouveau mot de passe pour tous vos appareils.</p>
+            <label for="new-password">Nouveau mot de passe</label>
+            <input id="new-password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>
+            <small>Minimum 10 caractères, avec une majuscule, une minuscule et un chiffre.</small>
+            <label for="confirm-password">Confirmez le nouveau mot de passe</label>
+            <input id="confirm-password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>
+            <button id="confirm-button" class="primary-button" type="submit">Enregistrer le nouveau mot de passe</button>
+          </form>
+          <p id="confirm-status" class="form-status" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="reset-footer">
+          <a id="back-link" class="text-link" href="/envoyer">← Retour à la connexion</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

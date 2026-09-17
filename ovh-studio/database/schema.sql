@@ -47,6 +47,17 @@ CREATE TABLE IF NOT EXISTS listener_sessions (
   INDEX idx_listener_sessions_expiry (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  token_hash CHAR(64) NOT NULL PRIMARY KEY,
+  account_type VARCHAR(16) NOT NULL,
+  user_id CHAR(36) NULL,
+  created_at BIGINT UNSIGNED NOT NULL,
+  expires_at BIGINT UNSIGNED NOT NULL,
+  used_at BIGINT UNSIGNED NULL,
+  INDEX idx_password_reset_user (account_type, user_id, expires_at),
+  INDEX idx_password_reset_expiry (expires_at, used_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS voice_clips (
   id CHAR(36) NOT NULL PRIMARY KEY,
   message_id CHAR(36) NOT NULL,
