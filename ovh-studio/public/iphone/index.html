@@ -19,8 +19,8 @@
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="apple-touch-icon" href="./assets/icon-180.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png">
-    <link rel="stylesheet" href="./app.css?v=1.4.1">
-    <script src="./app.js?v=1.4.1" defer></script>
+    <link rel="stylesheet" href="./app.css?v=1.5.0">
+    <script src="./app.js?v=1.5.0" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -78,13 +78,19 @@
               <p class="eyebrow red">EN DIRECT AVEC LE STUDIO</p>
               <h1 id="messages-title">Messages</h1>
             </div>
-            <span>Actualisation automatique</span>
+            <div class="messages-tools">
+              <span class="messages-refresh-label">Actualisation automatique</span>
+              <button id="push-button" class="push-button" type="button" aria-pressed="false" hidden>
+                <span class="push-button-icon" aria-hidden="true">♢</span>
+                <span><strong>Notifications</strong><small id="push-status">Activer</small></span>
+              </button>
+            </div>
           </div>
           <div class="message-frame-wrap">
             <iframe
               id="messages-frame"
               title="Conversation privée avec le studio Ellevie"
-              data-messages-url="/?source=app&amp;appVersion=1.4.1&amp;platform=ios"
+              data-messages-url="/?source=app&amp;appVersion=1.5.0&amp;platform=ios"
               data-source="app"
               allow="microphone"
             ></iframe>
