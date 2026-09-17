@@ -1,11 +1,6 @@
 name: Deploy Ellevie Studio to OVH
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/deploy-ovh-studio.yml
   workflow_dispatch:
 
 permissions:
