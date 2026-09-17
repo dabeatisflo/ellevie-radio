@@ -232,6 +232,7 @@ async function authenticate(path, payload, button) {
 async function logout() {
   stopAllRecording(true);
   clearInterval(conversationTimer);
+  await requestHostWebPushCleanup();
   await syncListenerPushSubscription(false).catch(() => null);
   try {
     await fetch("/api/account/logout", {
@@ -266,6 +267,7 @@ function switchAuthMode(mode) {
 function showAccount() {
   accountCard.hidden = false;
   chatCard.hidden = true;
+  postHostMessage("listenerAuthState", { loggedIn: false });
 }
 
 function showChat() {
@@ -274,6 +276,7 @@ function showChat() {
   chatUserName.textContent = account?.displayName || "";
   updateComposerActions();
   postNativeMessage("listenerReady", { accountId: account?.id || "" });
+  postHostMessage("listenerAuthState", { loggedIn: true, accountId: account?.id || "" });
   void syncListenerPushSubscription(nativePush.enabled);
 }
 
@@ -741,6 +744,43 @@ async function syncListenerPushSubscription(enabled) {
 function postNativeMessage(type, details = {}) {
   if (!window.ReactNativeWebView?.postMessage) return;
   window.ReactNativeWebView.postMessage(JSON.stringify({ type, ...details }));
+}
+
+function postHostMessage(type, details = {}) {
+  if (!embeddedInApp || window.parent === window) return;
+  try {
+    window.parent.postMessage(
+      { channel: "ellevie-messages", type, ...details },
+      window.parent.location.origin
+    );
+  } catch {
+    // The standalone message page remains fully usable without a host shell.
+  }
+}
+
+function requestHostWebPushCleanup() {
+  if (!embeddedInApp || window.parent === window) return Promise.resolve();
+  const requestId = typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return new Promise((resolve) => {
+    const timeout = window.setTimeout(finish, 2500);
+    function finish() {
+      window.clearTimeout(timeout);
+      window.removeEventListener("message", receiveAcknowledgement);
+      resolve();
+    }
+    function receiveAcknowledgement(event) {
+      if (event.source !== window.parent || event.origin !== window.location.origin) return;
+      const message = event.data;
+      if (message?.channel !== "ellevie-messages"
+          || message.type !== "listenerWebPushCleared"
+          || message.requestId !== requestId) return;
+      finish();
+    }
+    window.addEventListener("message", receiveAcknowledgement);
+    postHostMessage("listenerWillLogout", { requestId });
+  });
 }
 
 window.addEventListener("message", receiveNativeMessage);
