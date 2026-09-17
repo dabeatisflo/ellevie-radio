@@ -412,12 +412,76 @@ a:focus-visible {
   font-weight: 900;
 }
 
-.messages-heading > span {
+.messages-refresh-label {
+  display: block;
   max-width: 108px;
   color: var(--muted);
   font-size: 10px;
   line-height: 1.25;
   text-align: right;
+}
+
+.messages-tools {
+  display: flex;
+  min-width: 136px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.push-button {
+  display: flex;
+  min-width: 136px;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #efb8c6;
+  border-radius: 13px;
+  padding: 6px 10px;
+  background: #fff0f4;
+  color: var(--ink);
+  text-align: left;
+}
+
+.push-button[hidden] {
+  display: none;
+}
+
+.push-button:disabled {
+  opacity: 0.65;
+}
+
+.push-button[aria-pressed="true"] {
+  border-color: var(--red);
+  background: var(--red);
+  color: white;
+}
+
+.push-button-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.push-button > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.push-button strong {
+  font-size: 10px;
+  line-height: 1.1;
+}
+
+.push-button small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+.push-button[aria-pressed="true"] small {
+  color: #ffe4eb;
 }
 
 .message-frame-wrap {
