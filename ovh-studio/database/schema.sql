@@ -113,6 +113,17 @@ CREATE TABLE IF NOT EXISTS listener_push_subscriptions (
   INDEX idx_listener_push_user (user_id, enabled, updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS listener_web_push_subscriptions (
+  endpoint_hash CHAR(64) NOT NULL PRIMARY KEY,
+  user_id CHAR(36) NOT NULL,
+  endpoint TEXT NOT NULL,
+  p256dh VARCHAR(128) NOT NULL,
+  auth_secret VARCHAR(64) NOT NULL,
+  created_at BIGINT UNSIGNED NOT NULL,
+  updated_at BIGINT UNSIGNED NOT NULL,
+  INDEX idx_listener_web_push_user (user_id, updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS studio_claims (
   conversation_key_hash CHAR(64) NOT NULL PRIMARY KEY,
   conversation_key VARCHAR(191) NOT NULL,
