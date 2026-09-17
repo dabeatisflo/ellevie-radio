@@ -1,6 +1,11 @@
 name: Deploy Ellevie Studio to OVH
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/deploy-ovh-studio.yml
   workflow_dispatch:
 
 permissions:
@@ -20,6 +25,14 @@ jobs:
         with:
           ref: android-complete
           persist-credentials: false
+
+      - name: Validate the password reset update
+        run: |
+          set -euo pipefail
+          php -l ovh-studio/app/bootstrap.php
+          php -l ovh-studio/public/index.php
+          node --check ovh-studio/public/mot-de-passe-oublie.js
+          node --check ovh-studio/public/studio.js
 
       - name: Install the SFTP client
         run: |
@@ -54,6 +67,8 @@ jobs:
           put ovh-studio/public/confidentialite.html ellevie-studio/public/confidentialite.html
           put ovh-studio/public/envoyer.html ellevie-studio/public/envoyer.html
           put ovh-studio/public/form.js ellevie-studio/public/form.js
+          put ovh-studio/public/mot-de-passe-oublie.html ellevie-studio/public/mot-de-passe-oublie.html
+          put ovh-studio/public/mot-de-passe-oublie.js ellevie-studio/public/mot-de-passe-oublie.js
           -mkdir ellevie-studio/public/iphone
           -mkdir ellevie-studio/public/iphone/assets
           put ovh-studio/public/iphone/index.html ellevie-studio/public/iphone/index.html
@@ -78,6 +93,15 @@ jobs:
             if root_html="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/?deploy=${GITHUB_SHA}-${attempt}")" \
+              && studio_html="$(curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache' \
+              "https://studio.ellevie.fr/studio?deploy=${GITHUB_SHA}-${attempt}")" \
+              && reset_html="$(curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache' \
+              "https://studio.ellevie.fr/mot-de-passe-oublie?type=listener&deploy=${GITHUB_SHA}-${attempt}")" \
+              && reset_js="$(curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache' \
+              "https://studio.ellevie.fr/mot-de-passe-oublie.js?deploy=${GITHUB_SHA}-${attempt}")" \
               && iphone_html="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/iphone/?deploy=${GITHUB_SHA}-${attempt}")" \
@@ -92,6 +116,12 @@ jobs:
               "https://studio.ellevie.fr/api/listener/web-push-key?deploy=${GITHUB_SHA}-${attempt}")" \
               && push_key="$(jq -r '.publicKey // empty' <<<"$push_json")" \
               && [[ "$root_html" == *'form.js?v=12'* ]] \
+              && [[ "$root_html" == *'mot-de-passe-oublie?type=listener'* ]] \
+              && [[ "$studio_html" == *'mot-de-passe-oublie?type=studio'* ]] \
+              && [[ "$studio_html" == *'studio.js?v=12'* ]] \
+              && [[ "$studio_html" == *'id="recovery-form"'* ]] \
+              && [[ "$reset_html" == *'data-password-reset-version="1"'* ]] \
+              && [[ "$reset_js" == *'/api/password-reset/confirm'* ]] \
               && [[ "$iphone_html" == *'app.js?v=1.5.0'* ]] \
               && [[ "$manifest_json" == *'"display": "standalone"'* ]] \
               && [[ "$worker_js" == *"ellevie-iphone-v1.5.0"* ]] \
