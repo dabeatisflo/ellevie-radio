@@ -116,8 +116,9 @@ jobs:
               "https://studio.ellevie.fr/api/listener/web-push-key?deploy=${GITHUB_SHA}-${attempt}")" \
               && push_key="$(jq -r '.publicKey // empty' <<<"$push_json")" \
               && [[ "$root_html" == *'form.js?v=13'* ]] \
-              && [[ "$root_html" == *'/mot-de-passe-oublie?type=listener'* ]] \
+              && [[ "$root_html" == *'id="forgot-password-button"'* ]] \
               && [[ "$reset_html" == *'mot-de-passe-oublie.js?v=1'* ]] \
+              && [[ "$reset_html" == *'noindex, nofollow, noarchive'* ]] \
               && [[ "$studio_html" == *'/mot-de-passe-oublie?type=studio'* ]] \
               && [[ "$iphone_html" == *'app.js?v=1.5.0-carplay.1'* ]] \
               && [[ "$iphone_html" == *'CarPlay privé'* ]] \
