@@ -63,6 +63,10 @@ const programmeList = document.querySelector('#programme-list');
 const installButton = document.querySelector('#install-button');
 const installSheet = document.querySelector('#install-sheet');
 const installClose = document.querySelector('#install-close');
+const carplayButton = document.querySelector('#carplay-button');
+const carplaySheet = document.querySelector('#carplay-sheet');
+const carplayClose = document.querySelector('#carplay-close');
+const carplayCopy = document.querySelector('#carplay-copy');
 const messagesFrame = document.querySelector('#messages-frame');
 const pushButton = document.querySelector('#push-button');
 const pushStatus = document.querySelector('#push-status');
@@ -479,6 +483,33 @@ function closeInstallSheet() {
   installButton.focus();
 }
 
+function closeCarplaySheet() {
+  carplaySheet.hidden = true;
+  carplayButton.focus();
+}
+
+async function copyCarplayStreamAddress() {
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(STREAM_URL);
+    copied = true;
+  } catch {
+    const field = document.createElement('textarea');
+    field.value = STREAM_URL;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.append(field);
+    field.select();
+    copied = document.execCommand('copy');
+    field.remove();
+  }
+
+  const originalLabel = '2. Copier l’adresse du flux';
+  carplayCopy.textContent = copied ? 'Adresse copiée ✓' : 'Copiez l’adresse affichée ci-dessus';
+  if (copied) window.setTimeout(() => { carplayCopy.textContent = originalLabel; }, 2500);
+}
+
 installButton.addEventListener('click', async () => {
   if (deferredInstallPrompt) {
     deferredInstallPrompt.prompt();
@@ -494,8 +525,20 @@ installClose.addEventListener('click', closeInstallSheet);
 installSheet.addEventListener('click', (event) => {
   if (event.target === installSheet) closeInstallSheet();
 });
+
+carplayButton.addEventListener('click', () => {
+  carplaySheet.hidden = false;
+  carplayClose.focus();
+});
+carplayClose.addEventListener('click', closeCarplaySheet);
+carplayCopy.addEventListener('click', () => void copyCarplayStreamAddress());
+carplaySheet.addEventListener('click', (event) => {
+  if (event.target === carplaySheet) closeCarplaySheet();
+});
+
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !installSheet.hidden) closeInstallSheet();
+  if (event.key === 'Escape' && !carplaySheet.hidden) closeCarplaySheet();
 });
 
 window.addEventListener('beforeinstallprompt', (event) => {

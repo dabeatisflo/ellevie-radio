@@ -1,5 +1,7 @@
 node_modules/
 .expo/
+android/
+ios/
 dist-android-test/
 .git/
 *.jks
@@ -8,4 +10,3 @@ dist-android-test/
 *.aab
 .env
 .env.*
-

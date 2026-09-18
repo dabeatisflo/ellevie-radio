@@ -20,6 +20,19 @@ const logoutButtons = [
   document.querySelector("#app-logout-button")
 ].filter(Boolean);
 const chatUserName = document.querySelector("#chat-user-name");
+const changePasswordButtons = [
+  document.querySelector("#change-password-button"),
+  document.querySelector("#app-change-password-button")
+].filter(Boolean);
+const passwordPanel = document.querySelector("#password-panel");
+const passwordPanelClose = document.querySelector("#password-panel-close");
+const changePasswordForm = document.querySelector("#change-password-form");
+const currentPassword = document.querySelector("#current-password");
+const newPassword = document.querySelector("#new-password");
+const newPasswordConfirmation = document.querySelector("#new-password-confirmation");
+const changePasswordSubmit = document.querySelector("#change-password-submit");
+const changePasswordCancel = document.querySelector("#change-password-cancel");
+const passwordStatus = document.querySelector("#password-status");
 
 const messageForm = document.querySelector("#message-form");
 const messageInput = document.querySelector("#message");
@@ -103,6 +116,53 @@ registerForm.addEventListener("submit", async (event) => {
 });
 
 for (const button of logoutButtons) button.addEventListener("click", logout);
+for (const button of changePasswordButtons) button.addEventListener("click", openPasswordPanel);
+passwordPanelClose.addEventListener("click", closePasswordPanel);
+changePasswordCancel.addEventListener("click", closePasswordPanel);
+
+changePasswordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setPasswordStatus("", false);
+  if (!changePasswordForm.reportValidity() || !formToken || !account) return;
+  if (newPassword.value !== newPasswordConfirmation.value) {
+    setPasswordStatus("Les deux nouveaux mots de passe ne correspondent pas.", true);
+    return;
+  }
+  changePasswordSubmit.disabled = true;
+  const originalLabel = changePasswordSubmit.textContent;
+  changePasswordSubmit.textContent = "Enregistrement…";
+  try {
+    const response = await fetch("/api/account/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        currentPassword: currentPassword.value,
+        newPassword: newPassword.value,
+        confirmation: newPasswordConfirmation.value,
+        formToken
+      })
+    });
+    const result = await response.json();
+    if (response.status === 401) {
+      handleExpiredAccount();
+      return;
+    }
+    if (!response.ok || !result.ok) throw new Error(result.error || "Le mot de passe n’a pas pu être modifié.");
+    if (result.account) account = result.account;
+    changePasswordForm.reset();
+    setPasswordStatus(result.message || "Votre mot de passe a été modifié.", false);
+    postHostMessage("listenerAuthState", { loggedIn: true, accountId: account?.id || "" });
+    await syncListenerPushSubscription(nativePush.enabled).catch(() => null);
+    await refreshFormToken(false);
+  } catch (error) {
+    setPasswordStatus(error.message || "Le mot de passe n’a pas pu être modifié.", true);
+    await refreshFormToken(false);
+  } finally {
+    changePasswordSubmit.disabled = false;
+    changePasswordSubmit.textContent = originalLabel;
+  }
+});
 
 messageInput.addEventListener("input", () => {
   characterCount.textContent = `${messageInput.value.length}/${maxLength}`;
@@ -247,6 +307,7 @@ async function logout() {
   account = null;
   renderedConversation = null;
   sentMessages.replaceChildren();
+  closePasswordPanel();
   showAccount();
   postNativeMessage("listenerLoggedOut");
   await refreshFormToken(false);
@@ -278,6 +339,20 @@ function showChat() {
   postNativeMessage("listenerReady", { accountId: account?.id || "" });
   postHostMessage("listenerAuthState", { loggedIn: true, accountId: account?.id || "" });
   void syncListenerPushSubscription(nativePush.enabled);
+}
+
+function openPasswordPanel() {
+  if (!account) return;
+  changePasswordForm.reset();
+  setPasswordStatus("", false);
+  passwordPanel.hidden = false;
+  currentPassword.focus();
+}
+
+function closePasswordPanel() {
+  passwordPanel.hidden = true;
+  changePasswordForm.reset();
+  setPasswordStatus("", false);
 }
 
 async function refreshFormToken(showError = true) {
@@ -319,6 +394,7 @@ function handleExpiredAccount() {
   account = null;
   clearInterval(conversationTimer);
   stopAllRecording(true);
+  closePasswordPanel();
   showAccount();
   setAuthStatus("Votre session a expiré. Reconnectez-vous.", true);
 }
@@ -713,6 +789,11 @@ function setAuthStatus(message, isError) {
 function setFormStatus(message, isError) {
   formStatus.textContent = message;
   formStatus.className = isError ? "form-status is-error" : "form-status is-success";
+}
+
+function setPasswordStatus(message, isError) {
+  passwordStatus.textContent = message;
+  passwordStatus.className = isError ? "form-status is-error" : "form-status is-success";
 }
 
 function receiveNativeMessage(event) {

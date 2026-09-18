@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#ef003d">
     <meta name="description" content="ellevie Radio sur iPhone : direct, programmes et messages privés avec le studio.">
+    <meta name="robots" content="noindex, nofollow, noarchive">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -19,8 +20,8 @@
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="apple-touch-icon" href="./assets/icon-180.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png">
-    <link rel="stylesheet" href="./app.css?v=1.5.0">
-    <script src="./app.js?v=1.5.0" defer></script>
+    <link rel="stylesheet" href="./app.css?v=1.5.0-carplay.1">
+    <script src="./app.js?v=1.5.0-carplay.1" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -67,6 +68,12 @@
               <span aria-hidden="true">›</span>
             </button>
 
+            <button id="carplay-button" class="install-card carplay-card" type="button">
+              <span class="install-icon" aria-hidden="true">▰</span>
+              <span><strong>CarPlay privé</strong><small>Ajoutez ELLEVIE uniquement sur cet iPhone</small></span>
+              <span aria-hidden="true">›</span>
+            </button>
+
             <h2 class="section-title">Votre radio, votre rythme.</h2>
             <p class="body-copy">Une sélection pop chaleureuse, des voix familières et la bonne énergie pour chaque moment de la journée.</p>
           </div>
@@ -90,7 +97,7 @@
             <iframe
               id="messages-frame"
               title="Conversation privée avec le studio Ellevie"
-              data-messages-url="/?source=app&amp;appVersion=1.5.0&amp;platform=ios"
+              data-messages-url="/?source=app&amp;appVersion=1.5.0-carplay.1&amp;platform=ios"
               data-source="app"
               allow="microphone"
             ></iframe>
@@ -167,6 +174,25 @@
           <li>Touchez le bouton <strong>Partager</strong> <span class="share-icon" aria-hidden="true">□↑</span>.</li>
           <li>Choisissez <strong>Sur l’écran d’accueil</strong>, puis <strong>Ajouter</strong>.</li>
         </ol>
+      </section>
+    </div>
+
+    <div id="carplay-sheet" class="sheet-backdrop" hidden>
+      <section class="install-sheet" role="dialog" aria-modal="true" aria-labelledby="carplay-title">
+        <button id="carplay-close" class="sheet-close" type="button" aria-label="Fermer">×</button>
+        <img src="./assets/icon-192.png" alt="" width="76" height="76">
+        <h2 id="carplay-title">ELLEVIE dans CarPlay</h2>
+        <p class="private-note"><strong>Ajout privé sur cet iPhone :</strong> cette installation ne publie rien sur TuneIn ni dans un autre annuaire.</p>
+        <ol>
+          <li>Installez gratuitement <strong>Broadcasts</strong> sur cet iPhone.</li>
+          <li>Dans Broadcasts, touchez <strong>+</strong>, ajoutez une station manuellement et collez l’adresse copiée ci-dessous.</li>
+          <li>Connectez l’iPhone à CarPlay et ouvrez <strong>Broadcasts → ELLEVIE</strong>.</li>
+        </ol>
+        <code class="stream-address">https://stream.zeno.fm/5ct6gd3f0rhvv</code>
+        <div class="sheet-actions">
+          <a class="sheet-action" href="https://apps.apple.com/us/app/broadcasts/id1469995354" target="_blank" rel="noreferrer">1. Installer Broadcasts</a>
+          <button id="carplay-copy" class="sheet-action sheet-action-primary" type="button">2. Copier l’adresse du flux</button>
+        </div>
       </section>
     </div>
 

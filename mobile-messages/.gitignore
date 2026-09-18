@@ -1,5 +1,7 @@
 node_modules/
 .expo/
+android/
+ios/
 dist-android-test/
 *.jks
 *.keystore
@@ -7,4 +9,3 @@ dist-android-test/
 *.aab
 .env
 .env.*
-

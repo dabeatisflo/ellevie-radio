@@ -1,8 +1,8 @@
-const CACHE_NAME = 'ellevie-iphone-v1.5.0';
+const CACHE_NAME = 'ellevie-iphone-v1.5.0-carplay.1';
 const APP_SHELL = [
   '/iphone/',
-  '/iphone/app.css?v=1.5.0',
-  '/iphone/app.js?v=1.5.0',
+  '/iphone/app.css?v=1.5.0-carplay.1',
+  '/iphone/app.js?v=1.5.0-carplay.1',
   '/iphone/manifest.webmanifest',
   '/iphone/assets/icon-180.png',
   '/iphone/assets/icon-192.png',

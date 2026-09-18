@@ -7,15 +7,18 @@ Version séparée de l’application mobile officielle d’**ellevie Radio**, r�
 - écoute du direct `https://stream.zeno.fm/5ct6gd3f0rhvv` ;
 - lecture en arrière-plan ;
 - commandes depuis l’écran verrouillé et le centre de contrôle ;
+- écoute et commandes dans les véhicules compatibles Android Auto ;
 - lecteur persistant pendant la navigation dans l’application ;
 - messages texte vers le studio dans une conversation intégrée ;
-- aucun envoi de photo, vidéo, fichier ou note vocale ;
+- messages vocaux privés de 30 secondes maximum ;
+- compte synchronisé par e-mail et mot de passe, avec changement et récupération du mot de passe ;
+- historique privé et réponses du studio ;
 - réglage du volume ;
 - grille complète des programmes ;
 - présentation des animatrices ;
 - interface entièrement en français ;
 - politique de confidentialité consultable dans l’application ;
-- aucun compte et aucun suivi publicitaire.
+- aucun suivi publicitaire.
 
 ## Installation locale
 
@@ -27,6 +30,10 @@ npx expo start
 ```
 
 La lecture en arrière-plan et les commandes de l’écran verrouillé nécessitent une **development build** ou une build de production ; Expo Go ne permet pas de valider toute la configuration native.
+
+La build Android `preview` produit un APK installable en privé. Pour un test hors Google Play dans une voiture, activez le mode développeur d’Android Auto puis l’option permettant les sources inconnues. Après installation de l’APK, reconnectez le téléphone à la voiture et choisissez **ELLEVIE** dans les applications audio.
+
+La prise en charge automobile est générée par `plugins/with-android-auto.js`. Elle expose une bibliothèque média native contenant une seule station, **ELLEVIE Live**, avec lecture, pause et arrêt depuis Android Auto. Elle ne publie la station dans aucun annuaire radio.
 
 ## Vérifications
 

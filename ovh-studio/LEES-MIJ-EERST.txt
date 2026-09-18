@@ -1,4 +1,4 @@
-ELLEVIE STUDIO — ANDROID 1.4.0 + IPHONE-WEBAPP 1.5.0
+ELLEVIE STUDIO — ANDROID 1.5.0 + IPHONE-WEBAPP 1.5.0
 Accounts, geschiedenis, voiceclips, antwoorden en pushmeldingen
 
 WAT IS NIEUW?
@@ -37,21 +37,28 @@ WAT IS NIEUW?
 - Na installatie via Safari kan een ingelogde luisteraar meldingen inschakelen.
   Een Studio-antwoord komt dan ook binnen wanneer de webapp gesloten is.
 - Bij uitloggen worden de iPhone-melding en de serverkoppeling veilig verwijderd.
+- Luisteraars kunnen hun wachtwoord wijzigen op de website en in beide apps.
+  Andere toestellen en meldingskoppelingen worden daarna uitgelogd.
+- Via "Mot de passe oublié ?" wordt een eenmalige link verstuurd die 30 minuten
+  geldig blijft. Het token wordt uitsluitend gehasht in de database opgeslagen.
+- Android 1.5.0 bevat een echte Android Auto-mediaservice met ELLEVIE Live.
+- Voor CarPlay blijft de installatie privé: installeer Broadcasts gratis, voeg
+  handmatig het streamadres toe en open daarna ELLEVIE via Broadcasts in CarPlay.
+  De zender wordt niet door deze update bij TuneIn of een andere gids aangemeld.
+- Let op: het huidige stream.zeno.fm-adres blijft technisch via internet
+  bereikbaar en Zeno kan zelf een openbare zenderpagina tonen. Voor een echt
+  besloten testkanaal is bij de streamprovider een private of beveiligde
+  stream nodig; dat kan niet alleen in de apps worden afgedwongen.
 
-WAAR UPLOADEN MET FILEZILLA?
-1. Pak dit ZIP-bestand eerst uit op de computer.
-2. Open rechts in FileZilla exact deze map:
-   /home/sxwxrvj/ellevie-studio
-3. Sleep de drie uitgepakte mappen app, public en database naar die map.
-4. Kies bij bestaande bestanden: overschrijven.
-5. Verwijder niets op de server. Laat config.local.php en de bestaande
-   .htaccess gewoon staan; die zitten bewust niet in deze update.
-
-BELANGRIJK
-- Upload de inhoud NIET alleen naar public.
-- Importeer schema.sql NIET opnieuw. De database wordt automatisch en
-  veilig uitgebreid zodra de pagina na de upload voor het eerst opent.
-- De private map storage/voice-clips wordt automatisch aangemaakt.
+PUBLICATIE
+- Publiceer uitsluitend via de beveiligde GitHub Actions-workflow op de
+  hoofdbranch. De OVH-host, gebruiker, doelmappen en toegang blijven in de
+  afgeschermde repository-secrets en horen niet in dit openbare document.
+- De workflow zet alleen de gecontroleerde app-, database- en publieke
+  bestanden over. Bestaande private configuratiebestanden blijven behouden.
+- Importeer schema.sql niet handmatig. De database wordt automatisch en
+  veilig uitgebreid zodra de pagina na de publicatie voor het eerst opent.
+- De private map voor voiceclips wordt automatisch aangemaakt.
 
 
 EENMALIGE STUDIO-INSTELLING
@@ -99,14 +106,18 @@ IPHONE-WEBAPP TESTEN
 5. Stuur een bericht, sluit de webapp en antwoord vanuit Studio. De auditrice
    hoort nu een melding te ontvangen die rechtstreeks naar Berichten opent.
 6. Log uit en controleer dat de melding op dit toestel is uitgeschakeld.
+7. Open "CarPlay privé", installeer Broadcasts en kopieer het getoonde
+   streamadres. Voeg dit adres handmatig toe met de plusknop in Broadcasts.
 
 Er staan geen databasewachtwoorden of andere geheime gegevens in deze ZIP.
 
-PASWOORDHERSTEL TESTEN
-1. Open https://studio.ellevie.fr/envoyer en tik op "Mot de passe oublié ?".
-2. Vraag een link aan voor een bestaand luisteraarsaccount.
-3. Open de e-mail, kies een nieuw paswoord en controleer dat de link daarna
-   niet opnieuw bruikbaar is.
-4. Controleer dat oude sessies op website, Android en iPhone zijn afgemeld.
-5. Herhaal via https://studio.ellevie.fr/studio voor het Studio-account en
+PASWOORDEN TESTEN
+1. Meld aan via https://studio.ellevie.fr/envoyer en kies "Mot de passe".
+2. Wijzig het paswoord en controleer dat een tweede toestel wordt uitgelogd.
+3. Tik op het aanmeldscherm op "Mot de passe oublié ?" en vraag een link aan
+   voor een bestaand luisteraarsaccount.
+4. Open de e-mail binnen 30 minuten, kies een nieuw paswoord en controleer dat
+   dezelfde link daarna niet opnieuw bruikbaar is.
+5. Controleer dat oude sessies op website, Android en iPhone zijn afgemeld.
+6. Herhaal via https://studio.ellevie.fr/studio voor het Studio-account en
    controleer dat de mail op het private beheeradres aankomt.

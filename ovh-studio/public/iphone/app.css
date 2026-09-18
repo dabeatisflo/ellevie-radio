@@ -350,6 +350,16 @@ a:focus-visible {
   font-weight: 900;
 }
 
+.carplay-card {
+  border-color: #d9d3ff;
+  background: #f4f2ff;
+}
+
+.carplay-card .install-icon {
+  background: #30286d;
+  font-size: 18px;
+}
+
 .section-title {
   margin: 30px 0 0;
   font-size: 27px;
@@ -820,6 +830,59 @@ a:focus-visible {
 
 .install-sheet strong {
   color: var(--ink);
+}
+
+.private-note {
+  margin: 0 0 16px;
+  border-radius: 14px;
+  padding: 11px 12px;
+  background: #eff9f2;
+  color: #34704a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.stream-address {
+  display: block;
+  margin: 16px 0 0;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: #f8f4f5;
+  color: var(--red-deep);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  user-select: all;
+}
+
+.sheet-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.sheet-action {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2dadd;
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: #f7f3f4;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+}
+
+.sheet-action-primary {
+  border-color: var(--red);
+  background: var(--red);
+  color: white;
 }
 
 .sheet-close {

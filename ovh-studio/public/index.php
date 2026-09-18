@@ -41,6 +41,10 @@ try {
         logout_listener();
         json_response(['ok' => true]);
     }
+    if ($path === '/api/account/password' && $method === 'POST') {
+        require_allowed_origin();
+        change_listener_password();
+    }
     if ($path === '/api/password-reset/request' && $method === 'POST') {
         require_allowed_origin();
         request_password_reset();
@@ -278,6 +282,61 @@ function listener_login(): never
     json_response(['ok' => true, 'account' => listener_public_user($user)]);
 }
 
+function change_listener_password(): never
+{
+    ensure_password_reset_schema();
+    ensure_collaboration_push_schema();
+    ensure_web_push_schema();
+    $input = request_json();
+    require_form_token($input);
+    $user = require_listener_user();
+    $rateKey = hash('sha256', client_hash('listener-password-change') . "\n" . (string) $user['id']);
+    if (!rate_limit($rateKey, 'listener-password-change', 10, 3600)) {
+        json_response(['ok' => false, 'error' => 'Trop de tentatives. Réessayez plus tard.'], 429);
+    }
+    $currentPassword = (string) ($input['currentPassword'] ?? '');
+    $newPassword = (string) ($input['newPassword'] ?? '');
+    if ($newPassword !== (string) ($input['confirmation'] ?? '')) {
+        json_response(['ok' => false, 'error' => 'Les deux nouveaux mots de passe ne correspondent pas.'], 400);
+    }
+    if ($error = validate_new_password($newPassword)) json_response(['ok' => false, 'error' => $error], 400);
+    $statement = db()->prepare('SELECT password_hash FROM users WHERE id = ? LIMIT 1');
+    $statement->execute([$user['id']]);
+    $row = $statement->fetch();
+    if (!$row || !password_verify($currentPassword, (string) $row['password_hash'])) {
+        json_response(['ok' => false, 'error' => 'Le mot de passe actuel est incorrect.'], 400);
+    }
+    if (password_verify($newPassword, (string) $row['password_hash'])) {
+        json_response(['ok' => false, 'error' => "Choisissez un mot de passe différent de l'ancien."], 400);
+    }
+    update_listener_password_and_revoke((string) $user['id'], $newPassword);
+    json_response(['ok' => true, 'account' => listener_public_user($user),
+        'message' => 'Votre mot de passe a été modifié. Les autres appareils ont été déconnectés.']);
+}
+
+function update_listener_password_and_revoke(string $userId, string $newPassword): void
+{
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        revoke_listener_access($userId, $pdo);
+        $update = $pdo->prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?');
+        $update->execute([make_password_hash($newPassword), now(), $userId]);
+        create_listener_session($userId, $pdo);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+}
+
+function revoke_listener_access(string $userId, PDO $pdo): void
+{
+    foreach (['listener_sessions', 'password_reset_tokens', 'listener_push_subscriptions', 'listener_web_push_subscriptions'] as $table) {
+        $statement = $pdo->prepare("DELETE FROM {$table} WHERE user_id = ?");
+        $statement->execute([$userId]);
+    }
+}
 
 function password_reset_account_type(array $input): string
 {

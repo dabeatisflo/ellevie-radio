@@ -7,7 +7,7 @@
     <title>Messages — Ellevie</title>
     <meta name="description" content="Écrivez ou envoyez un message vocal au studio Ellevie Radio.">
     <link rel="stylesheet" href="/styles.css?v=12">
-    <script src="/form.js?v=12" defer></script>
+    <script src="/form.js?v=13" defer></script>
   </head>
   <body class="listener-page">
     <main class="listener-shell">
@@ -66,14 +66,42 @@
           </div>
           <div class="chat-account">
             <span class="live-dot"><i></i> En ligne</span>
+            <button id="change-password-button" class="text-button" type="button">Mot de passe</button>
             <button id="logout-button-listener" class="text-button" type="button">Déconnexion</button>
           </div>
         </div>
 
         <div class="app-chat-profile">
           <span>Connectée comme <strong id="chat-user-name"></strong></span>
-          <button id="app-logout-button" class="text-button" type="button">Déconnexion</button>
+          <div class="app-profile-actions">
+            <button id="app-change-password-button" class="text-button" type="button">Mot de passe</button>
+            <button id="app-logout-button" class="text-button" type="button">Déconnexion</button>
+          </div>
         </div>
+
+        <section id="password-panel" class="password-panel" aria-labelledby="password-panel-title" hidden>
+          <div class="password-panel-heading">
+            <div>
+              <p class="eyebrow">SÉCURITÉ DU COMPTE</p>
+              <h2 id="password-panel-title">Modifier le mot de passe</h2>
+            </div>
+            <button id="password-panel-close" class="password-panel-close" type="button" aria-label="Fermer">×</button>
+          </div>
+          <form id="change-password-form" class="password-form" novalidate>
+            <label for="current-password">Mot de passe actuel</label>
+            <input id="current-password" type="password" maxlength="128" autocomplete="current-password" required>
+            <label for="new-password">Nouveau mot de passe</label>
+            <input id="new-password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>
+            <small>Minimum 10 caractères, avec une majuscule, une minuscule et un chiffre.</small>
+            <label for="new-password-confirmation">Confirmez le nouveau mot de passe</label>
+            <input id="new-password-confirmation" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>
+            <div class="password-form-actions">
+              <button id="change-password-submit" class="primary-button" type="submit">Enregistrer</button>
+              <button id="change-password-cancel" class="secondary-button" type="button">Annuler</button>
+            </div>
+            <p id="password-status" class="form-status" role="status" aria-live="polite"></p>
+          </form>
+        </section>
 
         <div id="sent-messages" class="listener-messages" aria-live="polite"></div>
 

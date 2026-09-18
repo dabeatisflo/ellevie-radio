@@ -3,7 +3,7 @@
     "name": "ellevie Radio",
     "slug": "ellevie-radio-messages",
     "owner": "dabeatisflos-team",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -28,6 +28,7 @@
           "defaultChannel": "studio-replies"
         }
       ],
+      "./plugins/with-android-auto",
       [
         "expo-splash-screen",
         {
@@ -48,7 +49,7 @@
     },
     "android": {
       "package": "fr.ellevie.radio.messages",
-      "versionCode": 6,
+      "versionCode": 7,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#EF003D",

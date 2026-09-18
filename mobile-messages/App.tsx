@@ -33,7 +33,7 @@ import {
 } from './src/programs';
 
 const STREAM_URL = 'https://stream.zeno.fm/5ct6gd3f0rhvv';
-const MESSAGES_URL = 'https://studio.ellevie.fr/envoyer?source=app&appVersion=1.4.0';
+const MESSAGES_URL = 'https://studio.ellevie.fr/envoyer?source=app&appVersion=1.5.0';
 const PUSH_PREFERENCE_KEY = 'ellevie:listener-push-enabled';
 const PUSH_CHANNEL_ID = 'studio-replies';
 
@@ -467,17 +467,18 @@ function AnimatricesScreen() {
         <View style={styles.privacyCard}>
           <Text style={styles.privacyTitle}>Respect de votre vie privée</Text>
           <Text style={styles.privacyText}>
-            L’application ellevie Radio ne demande aucun compte. Pour diffuser le direct, elle se
-            connecte au service de streaming Zeno Media, qui peut recevoir des données techniques
-            comme l’adresse IP et l’heure de connexion selon sa propre politique.
+            Votre espace Messages utilise un compte avec prénom, adresse e-mail et mot de passe
+            protégé par hachage. Pour diffuser le direct, l’application se connecte au service de
+            streaming Zeno Media, qui peut recevoir des données techniques comme l’adresse IP et
+            l’heure de connexion selon sa propre politique.
           </Text>
           <Text style={styles.privacyText}>
-            Lorsque vous écrivez au studio, votre prénom, votre message et une empreinte technique
-            anonymisée de sécurité sont conservés au maximum 30 jours. Les messages ne sont pas
-            publics. L’application n’utilise ni publicité personnalisée, ni géolocalisation, ni
+            Les messages, réponses et enregistrements vocaux sont privés et conservés au maximum
+            30 jours. L’application n’utilise ni publicité personnalisée, ni géolocalisation, ni
             carnet d’adresses. Le microphone n’est utilisé que lorsque vous choisissez d’enregistrer
-            un message vocal. Les notifications de réponse sont facultatives et peuvent être
-            désactivées dans l’onglet Messages. Pour toute question : contact@ellevie.fr.
+            un message vocal. Les notifications de réponse sont facultatives. Vous pouvez modifier
+            ou récupérer votre mot de passe dans l’onglet Messages. Pour toute question :
+            contact@ellevie.fr.
           </Text>
           <Pressable
             accessibilityRole="link"

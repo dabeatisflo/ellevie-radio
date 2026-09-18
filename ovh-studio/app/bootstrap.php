@@ -454,6 +454,7 @@ function logout_studio(): void
 function cleanup_expired_data(): void
 {
     ensure_account_voice_schema();
+    ensure_password_reset_schema();
     ensure_studio_push_schema();
     ensure_collaboration_push_schema();
     $timestamp = now();
@@ -475,6 +476,7 @@ function cleanup_expired_data(): void
         ['DELETE FROM rate_limits WHERE reset_at < ?', [$timestamp]],
         ['DELETE FROM studio_sessions WHERE expires_at < ?', [$timestamp]],
         ['DELETE FROM listener_sessions WHERE expires_at < ?', [$timestamp]],
+        ['DELETE FROM password_reset_tokens WHERE expires_at < ?', [$timestamp]],
         ['DELETE FROM blocked_senders WHERE created_at < ?', [$timestamp - (90 * 86400)]],
         ['DELETE FROM audit_log WHERE created_at < ?', [$timestamp - (90 * 86400)]],
         ['DELETE FROM studio_push_subscriptions WHERE enabled = 0 AND updated_at < ?', [$timestamp - (30 * 86400)]],
@@ -663,7 +665,6 @@ function ensure_account_voice_schema(): void
         $release->execute([$lockName]);
     }
 }
-
 
 function ensure_password_reset_schema(): void
 {
