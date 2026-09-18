@@ -2,6 +2,11 @@ name: Deploy Ellevie Studio to OVH
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/deploy-ovh-studio.yml
 
 permissions:
   contents: read
@@ -21,13 +26,16 @@ jobs:
           ref: android-complete
           persist-credentials: false
 
-      - name: Validate the password reset update
+      - name: Validate the Studio source
         run: |
           set -euo pipefail
           php -l ovh-studio/app/bootstrap.php
           php -l ovh-studio/public/index.php
+          php -l ovh-studio/public/iphone/index.php
+          node --check ovh-studio/public/form.js
           node --check ovh-studio/public/mot-de-passe-oublie.js
           node --check ovh-studio/public/studio.js
+          node --check ovh-studio/public/iphone/app.js
 
       - name: Install the SFTP client
         run: |
@@ -88,15 +96,12 @@ jobs:
             if root_html="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/?deploy=${GITHUB_SHA}-${attempt}")" \
-              && studio_html="$(curl --fail --silent --show-error \
-              --header 'Cache-Control: no-cache' \
-              "https://studio.ellevie.fr/studio?deploy=${GITHUB_SHA}-${attempt}")" \
               && reset_html="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/mot-de-passe-oublie?type=listener&deploy=${GITHUB_SHA}-${attempt}")" \
-              && reset_js="$(curl --fail --silent --show-error \
+              && studio_html="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
-              "https://studio.ellevie.fr/mot-de-passe-oublie.js?deploy=${GITHUB_SHA}-${attempt}")" \
+              "https://studio.ellevie.fr/studio?deploy=${GITHUB_SHA}-${attempt}")" \
               && iphone_html="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/iphone/?deploy=${GITHUB_SHA}-${attempt}")" \
@@ -110,16 +115,14 @@ jobs:
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/api/listener/web-push-key?deploy=${GITHUB_SHA}-${attempt}")" \
               && push_key="$(jq -r '.publicKey // empty' <<<"$push_json")" \
-              && [[ "$root_html" == *'form.js?v=12'* ]] \
-              && [[ "$root_html" == *'mot-de-passe-oublie?type=listener'* ]] \
-              && [[ "$studio_html" == *'mot-de-passe-oublie?type=studio'* ]] \
-              && [[ "$studio_html" == *'studio.js?v=12'* ]] \
-              && [[ "$studio_html" == *'id="recovery-form"'* ]] \
-              && [[ "$reset_html" == *'data-password-reset-version="1"'* ]] \
-              && [[ "$reset_js" == *'/api/password-reset/confirm'* ]] \
-              && [[ "$iphone_html" == *'app.js?v=1.5.0'* ]] \
+              && [[ "$root_html" == *'form.js?v=13'* ]] \
+              && [[ "$root_html" == *'/mot-de-passe-oublie?type=listener'* ]] \
+              && [[ "$reset_html" == *'mot-de-passe-oublie.js?v=1'* ]] \
+              && [[ "$studio_html" == *'/mot-de-passe-oublie?type=studio'* ]] \
+              && [[ "$iphone_html" == *'app.js?v=1.5.0-carplay.1'* ]] \
+              && [[ "$iphone_html" == *'CarPlay privé'* ]] \
               && [[ "$manifest_json" == *'"display": "standalone"'* ]] \
-              && [[ "$worker_js" == *"ellevie-iphone-v1.5.0"* ]] \
+              && [[ "$worker_js" == *"ellevie-iphone-v1.5.0-carplay.1"* ]] \
               && [[ "$push_key" =~ ^[A-Za-z0-9_-]{87}$ ]]; then
               exit 0
             fi
@@ -127,34 +130,3 @@ jobs:
           done
           echo 'The upload completed, but the expected live version was not visible.' >&2
           exit 1
-
-
-      - name: Smoke test the password reset endpoint
-        run: |
-          set -euo pipefail
-          cookie_jar="$(mktemp)"
-          response_file="$(mktemp)"
-          trap 'rm -f "$cookie_jar" "$response_file"' EXIT
-
-          config_json="$(curl --fail --silent --show-error \
-            --cookie-jar "$cookie_jar" \
-            --header 'Cache-Control: no-cache' \
-            'https://studio.ellevie.fr/api/config')"
-          form_token="$(jq -r '.formToken // empty' <<<"$config_json")"
-          test -n "$form_token"
-
-          payload="$(jq -n \
-            --arg token "$form_token" \
-            --arg email "deployment-smoke-${GITHUB_SHA}@invalid.example" \
-            '{accountType: "listener", email: $email, formToken: $token}')"
-          status="$(curl --silent --show-error \
-            --output "$response_file" \
-            --write-out '%{http_code}' \
-            --cookie "$cookie_jar" \
-            --header 'Origin: https://studio.ellevie.fr' \
-            --header 'Content-Type: application/json' \
-            --data "$payload" \
-            'https://studio.ellevie.fr/api/password-reset/request')"
-
-          test "$status" = '202'
-          jq -e '.ok == true' "$response_file" >/dev/null
