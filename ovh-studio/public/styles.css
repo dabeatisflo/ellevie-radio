@@ -167,6 +167,29 @@ a {
   line-height: 1.35;
 }
 
+.account-form-intro {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.auth-link-button {
+  width: fit-content;
+  border: 0;
+  padding: 0.2rem 0;
+  background: transparent;
+  color: var(--red-deep);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.15rem;
+  cursor: pointer;
+}
+
+.auth-link-centered {
+  justify-self: center;
+  margin-top: 0.35rem;
+}
+
 .account-form .primary-button {
   min-height: 3.1rem;
   margin-top: 0.65rem;

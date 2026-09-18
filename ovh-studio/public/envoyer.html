@@ -33,7 +33,7 @@
           <input id="login-email" type="email" maxlength="191" autocomplete="email" inputmode="email" required>
           <label for="login-password">Mot de passe</label>
           <input id="login-password" type="password" maxlength="128" autocomplete="current-password" required>
-          <a class="text-link password-help-link" href="/mot-de-passe-oublie?type=listener">Mot de passe oublié&nbsp;?</a>
+          <button id="forgot-password-button" class="auth-link-button" type="button">Mot de passe oublié ?</button>
           <button id="login-button" class="primary-button" type="submit">Se connecter</button>
         </form>
 
@@ -52,6 +52,14 @@
             <span>J'accepte la <a href="/confidentialite" target="_blank" rel="noreferrer">politique de confidentialité</a>.</span>
           </label>
           <button id="register-button" class="primary-button" type="submit">Créer mon compte</button>
+        </form>
+
+        <form id="forgot-password-form" class="account-form" novalidate hidden>
+          <p class="account-form-intro">Indiquez l’adresse e-mail de votre compte. Si elle est reconnue, vous recevrez un lien valable 30 minutes.</p>
+          <label for="forgot-password-email">Adresse e-mail</label>
+          <input id="forgot-password-email" type="email" maxlength="191" autocomplete="email" inputmode="email" required>
+          <button id="forgot-password-submit" class="primary-button" type="submit">Envoyer le lien</button>
+          <button id="forgot-password-back" class="auth-link-button auth-link-centered" type="button">← Retour à la connexion</button>
         </form>
 
         <p id="auth-status" class="form-status" role="status" aria-live="polite"></p>

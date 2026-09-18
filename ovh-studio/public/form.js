@@ -13,6 +13,11 @@ const registerPassword = document.querySelector("#register-password");
 const registerConfirmation = document.querySelector("#register-confirmation");
 const privacyAccepted = document.querySelector("#privacy-accepted");
 const registerButton = document.querySelector("#register-button");
+const forgotPasswordButton = document.querySelector("#forgot-password-button");
+const forgotPasswordForm = document.querySelector("#forgot-password-form");
+const forgotPasswordEmail = document.querySelector("#forgot-password-email");
+const forgotPasswordSubmit = document.querySelector("#forgot-password-submit");
+const forgotPasswordBack = document.querySelector("#forgot-password-back");
 const authStatus = document.querySelector("#auth-status");
 const securityError = document.querySelector("#security-error");
 const logoutButtons = [
@@ -88,6 +93,11 @@ if (source === "app") document.body.classList.add("is-app");
 
 loginTab.addEventListener("click", () => switchAuthMode("login"));
 registerTab.addEventListener("click", () => switchAuthMode("register"));
+forgotPasswordButton.addEventListener("click", () => {
+  forgotPasswordEmail.value = loginEmail.value.trim();
+  switchAuthMode("forgot");
+});
+forgotPasswordBack.addEventListener("click", () => switchAuthMode("login"));
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -113,6 +123,38 @@ registerForm.addEventListener("submit", async (event) => {
     privacyAccepted: privacyAccepted.checked,
     conversationToken,
   }, registerButton);
+});
+
+forgotPasswordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setAuthStatus("", false);
+  if (!forgotPasswordForm.reportValidity() || !formToken) return;
+  forgotPasswordSubmit.disabled = true;
+  const originalLabel = forgotPasswordSubmit.textContent;
+  forgotPasswordSubmit.textContent = "Envoi…";
+  try {
+    const response = await fetch("/api/password-reset/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        accountType: "listener",
+        email: forgotPasswordEmail.value,
+        formToken
+      })
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "L’envoi du lien a échoué.");
+    loginEmail.value = forgotPasswordEmail.value.trim();
+    setAuthStatus(result.message || "Si un compte correspond à cette adresse, un lien vient d’être envoyé.", false);
+    await refreshFormToken(false);
+  } catch (error) {
+    setAuthStatus(error.message || "L’envoi du lien a échoué.", true);
+    await refreshFormToken(false);
+  } finally {
+    forgotPasswordSubmit.disabled = false;
+    forgotPasswordSubmit.textContent = originalLabel;
+  }
 });
 
 for (const button of logoutButtons) button.addEventListener("click", logout);
@@ -315,14 +357,17 @@ async function logout() {
 
 function switchAuthMode(mode) {
   const showLogin = mode === "login";
+  const showRegister = mode === "register";
+  const showForgot = mode === "forgot";
   loginForm.hidden = !showLogin;
-  registerForm.hidden = showLogin;
+  registerForm.hidden = !showRegister;
+  forgotPasswordForm.hidden = !showForgot;
   loginTab.classList.toggle("is-active", showLogin);
-  registerTab.classList.toggle("is-active", !showLogin);
+  registerTab.classList.toggle("is-active", showRegister);
   loginTab.setAttribute("aria-selected", String(showLogin));
-  registerTab.setAttribute("aria-selected", String(!showLogin));
+  registerTab.setAttribute("aria-selected", String(showRegister));
   setAuthStatus("", false);
-  (showLogin ? loginEmail : registerName).focus();
+  (showLogin ? loginEmail : (showRegister ? registerName : forgotPasswordEmail)).focus();
 }
 
 function showAccount() {
