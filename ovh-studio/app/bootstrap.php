@@ -111,6 +111,7 @@ function secure_headers(string $path): void
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: ' . ($allowSameOriginFrame ? 'SAMEORIGIN' : 'DENY'));
     header('Referrer-Policy: no-referrer');
+    header('X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex');
     $microphone = ($path === '/' || $path === '/envoyer') ? '(self)' : '()';
     $frameAncestors = $allowSameOriginFrame ? "'self'" : "'none'";
     header("Permissions-Policy: camera=(), microphone={$microphone}, geolocation=(), payment=()");
@@ -119,7 +120,6 @@ function secure_headers(string $path): void
     if (str_starts_with($path, '/api/') || str_starts_with($path, '/studio') || str_starts_with($path, '/installation')
         || $path === '/' || $path === '/envoyer' || $path === '/mot-de-passe-oublie') {
         header('Cache-Control: no-store');
-        header('X-Robots-Tag: noindex, nofollow');
     }
 }
 
