@@ -36,6 +36,16 @@ jobs:
           node --check ovh-studio/public/mot-de-passe-oublie.js
           node --check ovh-studio/public/studio.js
           node --check ovh-studio/public/iphone/app.js
+          grep -Fxq 'Disallow: /' ovh-studio/public/robots.txt
+          for page in \
+            ovh-studio/public/envoyer.html \
+            ovh-studio/public/studio.html \
+            ovh-studio/public/confidentialite.html \
+            ovh-studio/public/mot-de-passe-oublie.html \
+            ovh-studio/public/iphone/index.html; do
+            grep -Fq 'noindex, nofollow, noarchive, nosnippet, noimageindex' "$page"
+            grep -Fq 'name="referrer" content="no-referrer"' "$page"
+          done
 
       - name: Install the SFTP client
         run: |
@@ -64,6 +74,7 @@ jobs:
           put ovh-studio/app/bootstrap.php ellevie-studio/app/bootstrap.php
           put ovh-studio/database/schema.sql ellevie-studio/database/schema.sql
           put ovh-studio/public/styles.css ellevie-studio/public/styles.css
+          put ovh-studio/public/robots.txt ellevie-studio/public/robots.txt
           put ovh-studio/public/studio.html ellevie-studio/public/studio.html
           put ovh-studio/public/index.php ellevie-studio/public/index.php
           put ovh-studio/public/studio.js ellevie-studio/public/studio.js
@@ -102,9 +113,15 @@ jobs:
               && studio_html="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/studio?deploy=${GITHUB_SHA}-${attempt}")" \
+              && privacy_html="$(curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache' \
+              "https://studio.ellevie.fr/confidentialite?deploy=${GITHUB_SHA}-${attempt}")" \
               && iphone_html="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/iphone/?deploy=${GITHUB_SHA}-${attempt}")" \
+              && robots_txt="$(curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache' \
+              "https://studio.ellevie.fr/robots.txt?deploy=${GITHUB_SHA}-${attempt}")" \
               && manifest_json="$(curl --fail --silent --show-error \
               --header 'Cache-Control: no-cache' \
               "https://studio.ellevie.fr/iphone/manifest.webmanifest?deploy=${GITHUB_SHA}-${attempt}")" \
@@ -117,11 +134,16 @@ jobs:
               && push_key="$(jq -r '.publicKey // empty' <<<"$push_json")" \
               && [[ "$root_html" == *'form.js?v=13'* ]] \
               && [[ "$root_html" == *'id="forgot-password-button"'* ]] \
+              && [[ "$root_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
               && [[ "$reset_html" == *'mot-de-passe-oublie.js?v=1'* ]] \
-              && [[ "$reset_html" == *'noindex, nofollow, noarchive'* ]] \
+              && [[ "$reset_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
               && [[ "$studio_html" == *'/mot-de-passe-oublie?type=studio'* ]] \
+              && [[ "$studio_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
+              && [[ "$privacy_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
               && [[ "$iphone_html" == *'app.js?v=1.5.0-carplay.1'* ]] \
               && [[ "$iphone_html" == *'CarPlay privé'* ]] \
+              && [[ "$iphone_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
+              && [[ "$robots_txt" == $'User-agent: *\nDisallow: /' ]] \
               && [[ "$manifest_json" == *'"display": "standalone"'* ]] \
               && [[ "$worker_js" == *"ellevie-iphone-v1.5.0-carplay.1"* ]] \
               && [[ "$push_key" =~ ^[A-Za-z0-9_-]{87}$ ]]; then
