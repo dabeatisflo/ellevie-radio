@@ -68,12 +68,12 @@ EENMALIGE STUDIO-INSTELLING
 4. Bevestig met het huidige Studio-paswoord.
 
 Het adres wordt privé in de database bewaard en kan zowel op de website als in
-de Studio-app worden ingesteld. De standaard OVH-afzender is
-no-reply@ellevie.fr. Alleen als OVH een andere afzender vereist, kan die privé
+de Studio-app worden ingesteld. De standaard OVH-afzender is het bestaande
+contact@ellevie.fr-adres. Alleen als OVH een andere afzender vereist, kan die privé
 in config.local.php worden ingesteld:
 
   'mail' => [
-      'from_address' => 'no-reply@ellevie.fr',
+      'from_address' => 'contact@ellevie.fr',
       'from_name' => 'Ellevie Radio',
   ],
 
