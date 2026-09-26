@@ -36,6 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           php -l ovh-studio/app/bootstrap.php
+          grep -Fq "no-reply@studio.ellevie.fr" ovh-studio/app/bootstrap.php
           php -l ovh-studio/public/index.php
           php -l ovh-studio/public/iphone/index.php
           node --check ovh-studio/public/form.js
