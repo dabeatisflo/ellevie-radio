@@ -53,6 +53,10 @@ try {
         require_allowed_origin();
         confirm_password_reset();
     }
+    if ($path === '/api/studio/recovery/bootstrap' && $method === 'POST') {
+        require_allowed_origin();
+        bootstrap_studio_recovery();
+    }
 
     if ($path === '/api/messages' && $method === 'POST') {
         require_allowed_origin();
@@ -465,6 +469,56 @@ function request_password_reset(): never
     }
 
     finish_password_reset_request($startedAt);
+}
+
+function send_studio_recovery_reset(string $recipient): bool
+{
+    $recipient = normalize_email($recipient);
+    if (!filter_var($recipient, FILTER_VALIDATE_EMAIL) || strlen($recipient) > 191) {
+        return false;
+    }
+
+    $pdo = db();
+    $timestamp = now();
+    $cleanup = $pdo->prepare(
+        'DELETE FROM password_reset_tokens
+         WHERE expires_at <= ? OR (used_at IS NOT NULL AND used_at <= ?)'
+    );
+    $cleanup->execute([$timestamp, $timestamp - 86400]);
+
+    $token = random_token();
+    $tokenHash = hash('sha256', $token);
+    $pdo->beginTransaction();
+    try {
+        $pdo->exec(
+            "DELETE FROM password_reset_tokens
+             WHERE account_type = 'studio' AND used_at IS NULL"
+        );
+        $insert = $pdo->prepare(
+            "INSERT INTO password_reset_tokens
+             (token_hash, account_type, user_id, created_at, expires_at, used_at)
+             VALUES (?, 'studio', NULL, ?, ?, NULL)"
+        );
+        $insert->execute([$tokenHash, $timestamp, $timestamp + PASSWORD_RESET_SECONDS]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        $pdo->rollBack();
+        throw $error;
+    }
+
+    try {
+        $sent = send_password_reset_email($recipient, $token, 'studio');
+    } catch (Throwable $error) {
+        $sent = false;
+        error_log('Ellevie Studio recovery email error: ' . $error->getMessage());
+    }
+    if (!$sent) {
+        $delete = $pdo->prepare('DELETE FROM password_reset_tokens WHERE token_hash = ?');
+        $delete->execute([$tokenHash]);
+        error_log('Ellevie Studio recovery email could not be sent.');
+    }
+
+    return $sent;
 }
 
 function confirm_password_reset(): never
@@ -1279,6 +1333,64 @@ function install_studio(): never
     json_response(['ok' => true, 'message' => 'Installation terminée. Vous pouvez vous connecter au studio.']);
 }
 
+function bootstrap_studio_recovery(): never
+{
+    ensure_password_reset_schema();
+    $input = request_json();
+    require_form_token($input);
+    if (!rate_limit(client_hash('studio-recovery-bootstrap'), 'studio-recovery-bootstrap', 5, 3600)) {
+        json_response(['ok' => false, 'error' => 'Trop de tentatives. Réessayez dans une heure.'], 429);
+    }
+    $configuredKey = (string) (app_config()['install_key'] ?? '');
+    if (strlen($configuredKey) < 32 || str_starts_with($configuredKey, 'VERVANG_')) {
+        json_response(['ok' => false, 'error' => "La clé d'installation n'est pas configurée."], 500);
+    }
+    if (!hash_equals($configuredKey, (string) ($input['installKey'] ?? ''))) {
+        json_response(['ok' => false, 'error' => "Clé d'installation incorrecte."], 401);
+    }
+    if (admin_password_hash() === null) {
+        json_response(['ok' => false, 'error' => "Le studio n'est pas encore installé."], 503);
+    }
+
+    $email = normalize_email((string) ($input['email'] ?? ''));
+    if ($email !== '') {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 191) {
+            json_response(['ok' => false, 'error' => 'Saisissez une adresse e-mail valide.'], 400);
+        }
+        save_studio_recovery_email($email, 'studio-recovery-email:bootstrap');
+    } else {
+        $email = studio_recovery_email() ?? '';
+    }
+    if ($email === '') {
+        json_response([
+            'ok' => false,
+            'error' => "L’adresse de récupération du Studio n’est pas encore configurée.",
+        ], 422);
+    }
+
+    if (!send_studio_recovery_reset($email)) {
+        json_response([
+            'ok' => false,
+            'error' => "L’adresse a été enregistrée, mais l’e-mail n’a pas pu être envoyé.",
+        ], 502);
+    }
+
+    try {
+        $audit = db()->prepare(
+            "INSERT INTO audit_log (action, message_id, created_at)
+             VALUES ('studio-password:recovery-requested', NULL, ?)"
+        );
+        $audit->execute([now()]);
+    } catch (Throwable $error) {
+        error_log('Ellevie Studio recovery audit error: ' . $error->getMessage());
+    }
+
+    json_response([
+        'ok' => true,
+        'message' => 'Le lien sécurisé de réinitialisation a été envoyé. Il reste valable 30 minutes.',
+    ], 202);
+}
+
 function studio_login(): never
 {
     $input = request_json();
@@ -1313,6 +1425,33 @@ function get_studio_recovery_email(): never
         'configured' => $email !== null,
         'email' => $email,
     ]);
+}
+
+function save_studio_recovery_email(string $email, string $auditAction): void
+{
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 191) {
+        throw new InvalidArgumentException('Invalid Studio recovery email.');
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $save = $pdo->prepare(
+            "INSERT INTO settings (setting_key, setting_value, updated_at)
+             VALUES ('studio_recovery_email', ?, ?)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = VALUES(updated_at)"
+        );
+        $save->execute([$email, now()]);
+        $pdo->exec("DELETE FROM password_reset_tokens WHERE account_type = 'studio'");
+        $audit = $pdo->prepare(
+            'INSERT INTO audit_log (action, message_id, created_at) VALUES (?, NULL, ?)'
+        );
+        $audit->execute([$auditAction, now()]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        $pdo->rollBack();
+        throw $error;
+    }
 }
 
 function change_studio_recovery_email(): never
