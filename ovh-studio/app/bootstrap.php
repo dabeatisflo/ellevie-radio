@@ -229,7 +229,7 @@ function password_reset_mail_settings(): array
 {
     $config = app_config();
     $mail = is_array($config['mail'] ?? null) ? $config['mail'] : [];
-    $fromAddress = normalize_email((string) ($mail['from_address'] ?? 'no-reply@ellevie.fr'));
+    $fromAddress = normalize_email((string) ($mail['from_address'] ?? 'contact@ellevie.fr'));
     $fromName = trim((string) ($mail['from_name'] ?? 'Ellevie Radio'));
 
     if (!filter_var($fromAddress, FILTER_VALIDATE_EMAIL) || strlen($fromAddress) > 191) {
