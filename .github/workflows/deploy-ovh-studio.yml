@@ -4,14 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       send_studio_reset:
-        description: Save the private recovery address and send a Studio reset link
+        description: Send a Studio reset link to the stored private recovery address
         required: true
         default: false
         type: boolean
-      studio_recovery_email:
-        description: Private Studio recovery address (used only when the option above is enabled)
-        required: false
-        type: string
   push:
     branches:
       - main
@@ -110,20 +106,18 @@ jobs:
           put ovh-studio/public/iphone/assets/sofia.webp ellevie-studio/public/iphone/assets/sofia.webp
           SFTP
 
-      - name: Save the private Studio recovery address and send the reset link
+      - name: Request a reset link for the stored private Studio address
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.send_studio_reset }}
         env:
           OVH_SFTP_HOST: ${{ secrets.OVH_SFTP_HOST }}
           OVH_SFTP_PASSWORD: ${{ secrets.OVH_SFTP_PASSWORD }}
           OVH_SFTP_USER: ${{ secrets.OVH_SFTP_USER }}
           SSHPASS: ${{ secrets.OVH_SFTP_PASSWORD }}
-          STUDIO_RECOVERY_EMAIL: ${{ inputs.studio_recovery_email }}
         run: |
           set -euo pipefail
           test -n "$OVH_SFTP_HOST"
           test -n "$OVH_SFTP_USER"
           test -n "$OVH_SFTP_PASSWORD"
-          test -n "$STUDIO_RECOVERY_EMAIL"
 
           studio_config="$RUNNER_TEMP/ellevie-config.local.php"
           cookie_jar="$RUNNER_TEMP/ellevie-recovery-cookies.txt"
@@ -167,8 +161,7 @@ jobs:
           payload="$(jq -cn \
             --arg formToken "$form_token" \
             --arg installKey "$install_key" \
-            --arg email "$STUDIO_RECOVERY_EMAIL" \
-            '{formToken: $formToken, installKey: $installKey, email: $email}')"
+            '{formToken: $formToken, installKey: $installKey}')"
           status="$(curl --silent --show-error \
             --output "$recovery_response" \
             --write-out '%{http_code}' \
@@ -184,7 +177,7 @@ jobs:
             echo "$error_message" >&2
             exit 1
           fi
-          echo 'The private recovery address was saved and the Studio reset link was sent.'
+          echo 'The Studio reset request was accepted for the stored private recovery address.'
 
       - name: Verify the live Studio version
         run: |
