@@ -2,6 +2,16 @@ name: Deploy Ellevie Studio to OVH
 
 on:
   workflow_dispatch:
+    inputs:
+      send_studio_reset:
+        description: Save the private recovery address and send a Studio reset link
+        required: true
+        default: false
+        type: boolean
+      studio_recovery_email:
+        description: Private Studio recovery address (used only when the option above is enabled)
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -99,6 +109,82 @@ jobs:
           put ovh-studio/public/iphone/assets/nora.webp ellevie-studio/public/iphone/assets/nora.webp
           put ovh-studio/public/iphone/assets/sofia.webp ellevie-studio/public/iphone/assets/sofia.webp
           SFTP
+
+      - name: Save the private Studio recovery address and send the reset link
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.send_studio_reset }}
+        env:
+          OVH_SFTP_HOST: ${{ secrets.OVH_SFTP_HOST }}
+          OVH_SFTP_PASSWORD: ${{ secrets.OVH_SFTP_PASSWORD }}
+          OVH_SFTP_USER: ${{ secrets.OVH_SFTP_USER }}
+          SSHPASS: ${{ secrets.OVH_SFTP_PASSWORD }}
+          STUDIO_RECOVERY_EMAIL: ${{ inputs.studio_recovery_email }}
+        run: |
+          set -euo pipefail
+          test -n "$OVH_SFTP_HOST"
+          test -n "$OVH_SFTP_USER"
+          test -n "$OVH_SFTP_PASSWORD"
+          test -n "$STUDIO_RECOVERY_EMAIL"
+
+          studio_config="$RUNNER_TEMP/ellevie-config.local.php"
+          cookie_jar="$RUNNER_TEMP/ellevie-recovery-cookies.txt"
+          config_response="$RUNNER_TEMP/ellevie-config-response.json"
+          recovery_response="$RUNNER_TEMP/ellevie-recovery-response.json"
+          cleanup() {
+            rm -f "$studio_config" "$cookie_jar" "$config_response" "$recovery_response"
+          }
+          trap cleanup EXIT
+
+          sshpass -e sftp \
+            -P 22 \
+            -o BatchMode=no \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            "$OVH_SFTP_USER@$OVH_SFTP_HOST" <<SFTP
+          get ellevie-studio/config.local.php $studio_config
+          SFTP
+
+          install_key="$(php -r '
+            $config = require $argv[1];
+            $key = is_array($config) ? (string) ($config["install_key"] ?? "") : "";
+            if (strlen($key) < 32 || str_starts_with($key, "VERVANG_")) {
+                fwrite(STDERR, "The private Studio install key is missing or invalid.\n");
+                exit(1);
+            }
+            echo $key;
+          ' "$studio_config")"
+          echo "::add-mask::$install_key"
+
+          curl --fail --silent --show-error \
+            --cookie-jar "$cookie_jar" \
+            --header 'Accept: application/json' \
+            --header 'Cache-Control: no-cache' \
+            'https://studio.ellevie.fr/api/config' \
+            > "$config_response"
+          form_token="$(jq -r '.formToken // empty' "$config_response")"
+          test -n "$form_token"
+          echo "::add-mask::$form_token"
+
+          payload="$(jq -cn \
+            --arg formToken "$form_token" \
+            --arg installKey "$install_key" \
+            --arg email "$STUDIO_RECOVERY_EMAIL" \
+            '{formToken: $formToken, installKey: $installKey, email: $email}')"
+          status="$(curl --silent --show-error \
+            --output "$recovery_response" \
+            --write-out '%{http_code}' \
+            --cookie "$cookie_jar" \
+            --header 'Accept: application/json' \
+            --header 'Content-Type: application/json' \
+            --header 'Origin: https://studio.ellevie.fr' \
+            --data "$payload" \
+            'https://studio.ellevie.fr/api/studio/recovery/bootstrap')"
+
+          if [[ "$status" != '202' ]] || [[ "$(jq -r '.ok // false' "$recovery_response")" != 'true' ]]; then
+            error_message="$(jq -r '.error // "The Studio recovery action failed."' "$recovery_response")"
+            echo "$error_message" >&2
+            exit 1
+          fi
+          echo 'The private recovery address was saved and the Studio reset link was sent.'
 
       - name: Verify the live Studio version
         run: |
