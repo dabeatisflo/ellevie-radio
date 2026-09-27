@@ -42,6 +42,8 @@ jobs:
           node --check ovh-studio/public/form.js
           node --check ovh-studio/public/mot-de-passe-oublie.js
           node --check ovh-studio/public/studio.js
+          grep -Fq 'studio_user_schema_version' ovh-studio/app/bootstrap.php
+          grep -Fq 'id="user-create-form"' ovh-studio/public/studio.html
           node --check ovh-studio/public/iphone/app.js
           grep -Fxq 'Disallow: /' ovh-studio/public/robots.txt
           for page in \
@@ -218,6 +220,8 @@ jobs:
               && [[ "$reset_html" == *'mot-de-passe-oublie.js?v=1'* ]] \
               && [[ "$reset_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
               && [[ "$studio_html" == *'/mot-de-passe-oublie?type=studio'* ]] \
+              && [[ "$studio_html" == *'studio.js?v=13'* ]] \
+              && [[ "$studio_html" == *'id="user-create-form"'* ]] \
               && [[ "$studio_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
               && [[ "$privacy_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
               && [[ "$iphone_html" == *'app.js?v=1.5.0-carplay.1'* ]] \
