@@ -19,6 +19,14 @@ php <<'PHP'
 <?php
 $pdo = new PDO('mysql:host=127.0.0.1;dbname=ellevie_test;charset=utf8mb4', 'root', 'test-password');
 $schema = file_get_contents('ovh-studio/database/schema.sql');
+// Simulate the database already running on OVH before this feature is deployed.
+$schema = preg_replace(
+    '/CREATE TABLE IF NOT EXISTS studio_users \(.*?\) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n/s',
+    '', $schema
+);
+$schema = str_replace('  studio_user_id CHAR(36) NULL,' . "\n", '', $schema);
+$schema = str_replace('  INDEX idx_studio_sessions_user (studio_user_id),' . "\n", '', $schema);
+$schema = str_replace('  INDEX idx_studio_push_user (studio_user_id),' . "\n", '', $schema);
 foreach (explode(';', $schema) as $statement) {
     if (trim($statement) !== '') $pdo->exec($statement);
 }
