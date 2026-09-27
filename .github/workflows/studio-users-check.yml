@@ -3,7 +3,11 @@ name: Check Studio accounts
 on:
   push:
     branches:
+      - android-complete
       - studio-users
+  pull_request:
+    branches:
+      - android-complete
 
 permissions:
   contents: read
