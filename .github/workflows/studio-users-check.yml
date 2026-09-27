@@ -1,0 +1,37 @@
+name: Check Studio accounts
+
+on:
+  push:
+    branches:
+      - android-complete
+      - studio-users
+  pull_request:
+    branches:
+      - android-complete
+
+permissions:
+  contents: read
+
+jobs:
+  studio-users:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: ellevie_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -ptest-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Validate syntax
+        run: |
+          php -l ovh-studio/app/bootstrap.php
+          php -l ovh-studio/public/index.php
+          node --check ovh-studio/public/studio.js
+      - name: Run Studio account integration checks
+        run: bash tests/studio-users.sh

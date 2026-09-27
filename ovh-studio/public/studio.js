@@ -2,7 +2,14 @@ const loginPanel = document.querySelector("#login-panel");
 const loginForm = document.querySelector("#login-form");
 const loginStatus = document.querySelector("#login-status");
 const operatorInput = document.querySelector("#operator-name");
+const operatorEmailInput = document.querySelector("#operator-email");
 const passwordInput = document.querySelector("#password");
+const adminLoginMode = document.querySelector("#admin-login-mode");
+const staffLoginMode = document.querySelector("#staff-login-mode");
+const adminLoginFields = document.querySelector("#admin-login-fields");
+const staffLoginFields = document.querySelector("#staff-login-fields");
+const adminPasswordHelp = document.querySelector("#admin-password-help");
+const staffPasswordHelp = document.querySelector("#staff-password-help");
 const dashboard = document.querySelector("#dashboard");
 const dashboardStatus = document.querySelector("#dashboard-status");
 const messageList = document.querySelector("#message-list");
@@ -29,9 +36,22 @@ const recoveryForm = document.querySelector("#recovery-form");
 const recoveryEmailInput = document.querySelector("#recovery-email");
 const recoveryCurrentPasswordInput = document.querySelector("#recovery-current-password");
 const recoveryStatus = document.querySelector("#recovery-status");
+const adminSettings = document.querySelector("#admin-settings");
+const passwordSettingsTitle = document.querySelector("#password-settings-title");
+const passwordSettingsDescription = document.querySelector("#password-settings-description");
+const userCreateForm = document.querySelector("#user-create-form");
+const userNameInput = document.querySelector("#user-name");
+const userEmailInput = document.querySelector("#user-email");
+const userPasswordInput = document.querySelector("#user-password");
+const generateUserPasswordButton = document.querySelector("#generate-user-password");
+const userCreateStatus = document.querySelector("#user-create-status");
+const usersList = document.querySelector("#studio-users-list");
+const usersStatus = document.querySelector("#studio-users-status");
 
 let currentStatus = "active";
 let currentOperatorName = "";
+let currentRole = "";
+let loginMode = "admin";
 let currentClaims = {};
 let pollTimer = null;
 let knownNewestId = null;
@@ -43,6 +63,24 @@ const replyDrafts = new Map();
 const claimHeartbeatAt = new Map();
 const nativePush = { token: "", enabled: false, platform: "android" };
 
+adminLoginMode.addEventListener("click", () => setLoginMode("admin"));
+staffLoginMode.addEventListener("click", () => setLoginMode("staff"));
+
+function setLoginMode(mode) {
+  loginMode = mode;
+  const staff = mode === "staff";
+  adminLoginMode.setAttribute("aria-pressed", String(!staff));
+  staffLoginMode.setAttribute("aria-pressed", String(staff));
+  adminLoginFields.hidden = staff;
+  staffLoginFields.hidden = !staff;
+  adminPasswordHelp.hidden = staff;
+  staffPasswordHelp.hidden = !staff;
+  operatorInput.required = !staff;
+  operatorEmailInput.required = staff;
+  loginStatus.textContent = "";
+  (staff ? operatorEmailInput : operatorInput).focus();
+}
+
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   loginStatus.textContent = "Connexion…";
@@ -50,13 +88,13 @@ loginForm.addEventListener("submit", async (event) => {
   try {
     const response = await apiFetch("/api/studio/login", {
       method: "POST",
-      body: JSON.stringify({
-        operatorName: operatorInput.value,
-        password: passwordInput.value
-      })
+      body: JSON.stringify(loginMode === "staff"
+        ? { email: operatorEmailInput.value.trim(), password: passwordInput.value }
+        : { operatorName: operatorInput.value, password: passwordInput.value })
     });
     if (!response.ok) throw new Error(response.error || "Connexion impossible.");
     currentOperatorName = response.operatorName || operatorInput.value.trim();
+    currentRole = response.role || "admin";
     passwordInput.value = "";
     showDashboard();
     await loadMessages(true);
@@ -111,6 +149,7 @@ passwordForm.addEventListener("submit", async (event) => {
     passwordForm.reset();
     passwordStatus.textContent = response.message;
     passwordStatus.className = "form-status is-success";
+    void syncStudioPushSubscription(nativePush.enabled);
   } catch (error) {
     passwordStatus.textContent = error.message;
     passwordStatus.className = "form-status is-error";
@@ -151,6 +190,45 @@ recoveryForm.addEventListener("submit", async (event) => {
     recoveryStatus.className = "form-status is-error";
   } finally {
     submitButton.disabled = false;
+  }
+});
+
+generateUserPasswordButton.addEventListener("click", () => {
+  userPasswordInput.value = generatePassword();
+  userCreateForm.querySelector("button[type='submit']").disabled = false;
+  userPasswordInput.focus();
+  userPasswordInput.select();
+});
+userPasswordInput.addEventListener("input", () => {
+  userCreateForm.querySelector("button[type='submit']").disabled = false;
+});
+
+userCreateForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!userCreateForm.reportValidity()) return;
+  const submitButton = userCreateForm.querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  userCreateStatus.textContent = "Création…";
+  userCreateStatus.className = "form-status";
+  try {
+    const result = await apiFetch("/api/studio/users", {
+      method: "POST",
+      body: JSON.stringify({
+        displayName: userNameInput.value.trim(),
+        email: userEmailInput.value.trim(),
+        password: userPasswordInput.value
+      })
+    });
+    if (!result.ok) throw new Error(result.error || "Création impossible.");
+    userNameInput.value = "";
+    userEmailInput.value = "";
+    userCreateStatus.textContent = "Compte créé. Copiez le mot de passe affiché avant d’en générer un autre.";
+    userCreateStatus.className = "form-status is-success";
+    await loadStudioUsers();
+  } catch (error) {
+    submitButton.disabled = false;
+    userCreateStatus.textContent = error.message;
+    userCreateStatus.className = "form-status is-error";
   }
 });
 
@@ -261,6 +339,7 @@ async function checkExistingSession() {
   const response = await apiFetch("/api/studio/messages?status=active&limit=1").catch(() => null);
   if (response?.ok) {
     currentOperatorName = response.operatorName || "Studio";
+    currentRole = response.role || "admin";
     showDashboard();
     await loadMessages();
   } else {
@@ -281,6 +360,7 @@ async function loadMessages(manual = false) {
     if (!result.ok) throw new Error(result.error || "Chargement impossible.");
 
     currentOperatorName = result.operatorName || currentOperatorName || "Studio";
+    currentRole = result.role || currentRole;
     currentClaims = result.claims && typeof result.claims === "object" ? result.claims : {};
     operatorDisplay.textContent = currentOperatorName;
     connectionState.textContent = "En ligne";
@@ -625,28 +705,156 @@ function showLogin(message = "") {
   pollTimer = null;
   dashboard.hidden = true;
   loginPanel.hidden = false;
+  currentRole = "";
   loginStatus.textContent = message;
   loginStatus.className = message ? "form-status is-error" : "form-status";
-  (operatorInput.value.trim() ? passwordInput : operatorInput).focus();
+  ((loginMode === "staff" ? operatorEmailInput.value.trim() : operatorInput.value.trim())
+    ? passwordInput : (loginMode === "staff" ? operatorEmailInput : operatorInput)).focus();
 }
 
 function openSettings() {
   settingsPanel.hidden = false;
   passwordStatus.textContent = "";
   recoveryStatus.textContent = "";
+  adminSettings.hidden = currentRole !== "admin";
+  passwordSettingsTitle.textContent = currentRole === "admin" ? "Mot de passe Studio" : "Votre mot de passe";
+  passwordSettingsDescription.textContent = currentRole === "admin"
+    ? "Modifiez ici le mot de passe du responsable."
+    : "Modifiez votre mot de passe personnel. Vos autres appareils seront déconnectés.";
   document.body.classList.add("has-dialog");
-  void loadRecoveryEmail();
-  recoveryEmailInput.focus();
+  if (currentRole === "admin") {
+    void loadRecoveryEmail();
+    void loadStudioUsers();
+    recoveryEmailInput.focus();
+  } else {
+    currentPasswordInput.focus();
+  }
 }
 
 function closeSettings() {
   settingsPanel.hidden = true;
   passwordForm.reset();
   recoveryForm.reset();
+  userCreateForm.reset();
+  userCreateForm.querySelector("button[type='submit']").disabled = false;
+  usersList.replaceChildren();
+  usersStatus.textContent = "";
+  userCreateStatus.textContent = "";
   passwordStatus.textContent = "";
   recoveryStatus.textContent = "";
   document.body.classList.remove("has-dialog");
   settingsButton.focus();
+}
+
+function generatePassword() {
+  const lower = "abcdefghjkmnpqrstuvwxyz";
+  const upper = "ABCDEFGHJKMNPQRSTUVWXYZ";
+  const digits = "23456789";
+  const all = lower + upper + digits;
+  const choose = (source) => source[crypto.getRandomValues(new Uint32Array(1))[0] % source.length];
+  const characters = [choose(lower), choose(upper), choose(digits)];
+  while (characters.length < 16) characters.push(choose(all));
+  for (let i = characters.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [characters[i], characters[j]] = [characters[j], characters[i]];
+  }
+  return characters.join("");
+}
+
+async function loadStudioUsers() {
+  usersStatus.textContent = "Chargement…";
+  usersStatus.className = "form-status";
+  try {
+    const result = await apiFetch("/api/studio/users");
+    if (!result.ok) throw new Error(result.error || "Chargement impossible.");
+    usersList.replaceChildren(...result.users.map(renderStudioUser));
+    usersStatus.textContent = result.users.length ? "" : "Aucun compte personnel créé.";
+  } catch (error) {
+    usersStatus.textContent = error.message;
+    usersStatus.className = "form-status is-error";
+  }
+}
+
+function renderStudioUser(user) {
+  const card = document.createElement("article");
+  card.className = "studio-user-card";
+  const name = document.createElement("strong");
+  name.textContent = `${user.displayName} · ${user.active ? "Actif" : "Désactivé"}`;
+  const email = document.createElement("small");
+  email.textContent = user.email;
+  const actions = document.createElement("div");
+  actions.className = "studio-user-actions";
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "secondary-button";
+  toggle.textContent = user.active ? "Désactiver" : "Réactiver";
+  const reset = document.createElement("button");
+  reset.type = "button";
+  reset.className = "secondary-button";
+  reset.textContent = "Nouveau mot de passe";
+  const resetForm = document.createElement("form");
+  resetForm.className = "studio-user-reset";
+  resetForm.hidden = true;
+  const resetInput = document.createElement("input");
+  resetInput.type = "text";
+  resetInput.minLength = 10;
+  resetInput.maxLength = 128;
+  resetInput.required = true;
+  resetInput.autocomplete = "off";
+  resetInput.spellcheck = false;
+  resetInput.setAttribute("aria-label", `Nouveau mot de passe de ${user.displayName}`);
+  const resetSubmit = document.createElement("button");
+  resetSubmit.type = "submit";
+  resetSubmit.className = "primary-button";
+  resetSubmit.textContent = "Enregistrer";
+  const status = document.createElement("p");
+  status.className = "form-status";
+  status.setAttribute("role", "status");
+
+  toggle.addEventListener("click", async () => {
+    toggle.disabled = true;
+    try {
+      const response = await apiFetch(`/api/studio/users/${user.id}`, {
+        method: "PATCH", body: JSON.stringify({ active: !user.active })
+      });
+      if (!response.ok) throw new Error(response.error || "Modification impossible.");
+      await loadStudioUsers();
+    } catch (error) {
+      toggle.disabled = false;
+      status.textContent = error.message;
+      status.className = "form-status is-error";
+    }
+  });
+  reset.addEventListener("click", () => {
+    resetForm.hidden = !resetForm.hidden;
+    if (!resetForm.hidden) {
+      resetInput.value = generatePassword();
+      resetSubmit.disabled = false;
+      status.textContent = "";
+      resetInput.focus();
+      resetInput.select();
+    }
+  });
+  resetForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    resetSubmit.disabled = true;
+    try {
+      const response = await apiFetch(`/api/studio/users/${user.id}`, {
+        method: "PATCH", body: JSON.stringify({ password: resetInput.value })
+      });
+      if (!response.ok) throw new Error(response.error || "Réinitialisation impossible.");
+      status.textContent = "Mot de passe enregistré. Copiez-le maintenant pour cette personne.";
+      status.className = "form-status is-success";
+    } catch (error) {
+      resetSubmit.disabled = false;
+      status.textContent = error.message;
+      status.className = "form-status is-error";
+    }
+  });
+  resetForm.append(resetInput, resetSubmit);
+  actions.append(toggle, reset);
+  card.append(name, email, actions, resetForm, status);
+  return card;
 }
 
 

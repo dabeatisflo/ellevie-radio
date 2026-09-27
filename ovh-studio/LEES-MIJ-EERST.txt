@@ -18,8 +18,16 @@ WAT IS NIEUW?
   alleen nog een extra handmatige mogelijkheid.
 - Studio toont één verticale lijst, gesorteerd op de nieuwste activiteit.
 - Binnen ieder gesprek staan zowel berichten als antwoorden nieuwste eerst.
-- Iedere medewerker meldt zich aan met haar voornaam en het gedeelde
-  Studio-wachtwoord; web en Android gebruiken exact dezelfde login.
+- Het bestaande gedeelde Studio-wachtwoord blijft de toegang voor de verantwoordelijke.
+  Via Paramètres > Comptes de l’équipe kan die persoonlijke accounts maken,
+  uitschakelen, heractiveren en een wachtwoord opnieuw instellen.
+- Medewerkers melden zich aan met hun eigen e-mail en wachtwoord via
+  "Compte personnel". Hun voornaam bij antwoorden komt uit hun account.
+- Een medewerker kan haar wachtwoord zelf wijzigen via Paramètres. Als zij het
+  vergeten is, stelt de verantwoordelijke een nieuw wachtwoord in.
+- Bij uitschakelen of wachtwoordherstel worden haar sessies en meldingen
+  ingetrokken. Een nieuw wachtwoord wordt alleen tijdens de beheerhandeling
+  getoond en moet rechtstreeks aan haar worden doorgegeven.
 - Zodra iemand in een antwoordvak klikt, is dat gesprek tien minuten voor
   haar gereserveerd. Een tweede medewerker kan dan niet tegelijk antwoorden.
 - Antwoorden kan met de knop Répondre, gewone Enter en numpad-Enter.
@@ -66,6 +74,10 @@ EENMALIGE STUDIO-INSTELLING
 2. Open Paramètres.
 3. Vul bij "Adresse de récupération" het private beheeradres in.
 4. Bevestig met het huidige Studio-paswoord.
+5. Open "Comptes de l’équipe", vul voornaam en e-mail in en genereer een
+   startwachtwoord. Kopieer het voordat je het formulier sluit.
+6. De medewerker kiest bij aanmelden "Compte personnel" en gebruikt haar
+   eigen e-mail en wachtwoord. Het gedeelde paswoord blijft voor de beheerder.
 
 Het adres wordt privé in de database bewaard en kan zowel op de website als in
 de Studio-app worden ingesteld. De standaard OVH-afzender is het bestaande

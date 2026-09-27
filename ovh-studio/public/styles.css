@@ -936,6 +936,31 @@ p {
   margin-bottom: 0.8rem;
 }
 
+.login-modes {
+  display: flex;
+  gap: 0.4rem;
+  margin: 1rem 0;
+  padding: 0.3rem;
+  border-radius: 0.8rem;
+  background: #f5f2f3;
+}
+
+.login-modes button {
+  flex: 1;
+  min-height: 2.5rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.login-modes button[aria-pressed="true"] {
+  background: white;
+  box-shadow: 0 0.15rem 0.5rem rgba(39, 21, 27, 0.12);
+}
+
 .studio-topbar {
   position: sticky;
   z-index: 10;
@@ -1411,7 +1436,7 @@ p {
 }
 
 .settings-card {
-  width: min(100%, 32rem);
+  width: min(100%, 36rem);
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
   border-radius: 1.25rem;
@@ -1499,6 +1524,72 @@ p {
   height: 1px;
   margin: 1.35rem 0;
   background: var(--line);
+}
+
+.password-generator {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.password-generator input {
+  min-width: 0;
+  flex: 1;
+}
+
+.password-generator .secondary-button {
+  margin: 0;
+}
+
+.studio-users-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.2rem;
+}
+
+.studio-user-card {
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.studio-user-card strong,
+.studio-user-card small {
+  display: block;
+}
+
+.studio-user-card small {
+  margin: 0.2rem 0 0.7rem;
+  color: var(--muted);
+}
+
+.studio-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.studio-user-actions button {
+  margin: 0;
+}
+
+.studio-user-reset {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.studio-user-reset input {
+  min-width: 0;
+  flex: 1;
+}
+
+@media (max-width: 420px) {
+  .studio-user-reset,
+  .password-generator {
+    flex-direction: column;
+  }
 }
 
 .installation-page {

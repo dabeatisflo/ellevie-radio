@@ -7,8 +7,8 @@
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <meta name="referrer" content="no-referrer">
     <title>Studio — Ellevie</title>
-    <link rel="stylesheet" href="/styles.css?v=12">
-    <script src="/studio.js?v=12" defer></script>
+    <link rel="stylesheet" href="/styles.css?v=13">
+    <script src="/studio.js?v=13" defer></script>
   </head>
   <body class="studio-page">
     <main>
@@ -20,11 +20,22 @@
         <form id="login-form" class="login-card">
           <h1 id="login-title">Connexion studio</h1>
           <p>Cette page est réservée à l'équipe Ellevie.</p>
-          <label for="operator-name">Votre prénom</label>
-          <input id="operator-name" name="operatorName" type="text" autocomplete="given-name" minlength="2" maxlength="40" required>
+          <div class="login-modes" role="group" aria-label="Type de connexion">
+            <button id="admin-login-mode" type="button" aria-pressed="true">Responsable</button>
+            <button id="staff-login-mode" type="button" aria-pressed="false">Compte personnel</button>
+          </div>
+          <div id="admin-login-fields" class="login-fields">
+            <label for="operator-name">Votre prénom</label>
+            <input id="operator-name" name="operatorName" type="text" autocomplete="given-name" minlength="2" maxlength="40" required>
+          </div>
+          <div id="staff-login-fields" class="login-fields" hidden>
+            <label for="operator-email">Votre e-mail</label>
+            <input id="operator-email" name="email" type="email" autocomplete="username" maxlength="191" inputmode="email">
+          </div>
           <label for="password">Mot de passe</label>
           <input id="password" name="password" type="password" autocomplete="current-password" required>
-          <a class="text-link password-help-link" href="/mot-de-passe-oublie?type=studio">Mot de passe oublié&nbsp;?</a>
+          <a id="admin-password-help" class="text-link password-help-link" href="/mot-de-passe-oublie?type=studio">Mot de passe oublié&nbsp;?</a>
+          <p id="staff-password-help" class="password-help-link" hidden>Mot de passe oublié ? Demandez au responsable de le réinitialiser.</p>
           <button class="primary-button" type="submit">Se connecter</button>
           <p id="login-status" class="form-status" role="status" aria-live="polite"></p>
         </form>
@@ -90,6 +101,7 @@
               </div>
               <button id="settings-close" class="icon-button" type="button" aria-label="Fermer">×</button>
             </div>
+            <div id="admin-settings">
             <form id="recovery-form" class="settings-form">
               <h3>Adresse de récupération</h3>
               <p>Cette adresse reçoit les liens « Mot de passe oublié » du Studio. Elle reste privée.</p>
@@ -101,9 +113,31 @@
               <p id="recovery-status" class="form-status" role="status" aria-live="polite"></p>
             </form>
             <div class="settings-divider" role="separator"></div>
+            <section aria-labelledby="studio-users-title">
+              <h3 id="studio-users-title">Comptes de l’équipe</h3>
+              <p>Chaque membre se connecte avec son e-mail et son propre mot de passe.</p>
+              <form id="user-create-form" class="settings-form">
+                <label for="user-name">Prénom</label>
+                <input id="user-name" type="text" minlength="2" maxlength="40" autocomplete="off" required>
+                <label for="user-email">E-mail</label>
+                <input id="user-email" type="email" maxlength="191" autocomplete="off" inputmode="email" required>
+                <label for="user-password">Premier mot de passe</label>
+                <div class="password-generator">
+                  <input id="user-password" type="text" minlength="10" maxlength="128" autocomplete="off" spellcheck="false" required>
+                  <button id="generate-user-password" class="secondary-button" type="button">Générer</button>
+                </div>
+                <small>Le mot de passe reste affiché ici jusqu’à la fermeture de cette fenêtre. Transmettez-le à la personne concernée.</small>
+                <button class="primary-button" type="submit">Créer le compte</button>
+                <p id="user-create-status" class="form-status" role="status" aria-live="polite"></p>
+              </form>
+              <div id="studio-users-list" class="studio-users-list" aria-live="polite"></div>
+              <p id="studio-users-status" class="form-status" role="status" aria-live="polite"></p>
+            </section>
+            <div class="settings-divider" role="separator"></div>
+            </div>
             <form id="password-form" class="settings-form">
-              <h3>Mot de passe Studio</h3>
-              <p>Modifiez ici le mot de passe utilisé pour accéder au studio.</p>
+              <h3 id="password-settings-title">Mot de passe Studio</h3>
+              <p id="password-settings-description">Modifiez ici le mot de passe utilisé pour accéder au studio.</p>
               <label for="current-password">Mot de passe actuel</label>
               <input id="current-password" type="password" autocomplete="current-password" required>
               <label for="new-password">Nouveau mot de passe</label>
