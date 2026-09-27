@@ -379,12 +379,16 @@ function logout_listener(): void
 
 function studio_session_is_valid(): bool
 {
-    ensure_collaboration_push_schema();
+    ensure_studio_user_schema();
     $token = (string) ($_COOKIE[SESSION_COOKIE] ?? '');
     if ($token === '') {
         return false;
     }
-    $statement = db()->prepare('SELECT expires_at FROM studio_sessions WHERE token_hash = ? LIMIT 1');
+    $statement = db()->prepare(
+        'SELECT s.expires_at FROM studio_sessions s
+         LEFT JOIN studio_users u ON u.id = s.studio_user_id
+         WHERE s.token_hash = ? AND (s.studio_user_id IS NULL OR u.active = 1) LIMIT 1'
+    );
     $statement->execute([hash('sha256', $token)]);
     $session = $statement->fetch();
     return $session && (int) $session['expires_at'] > now();
@@ -395,35 +399,41 @@ function voice_storage_directory(): string
     return dirname(__DIR__) . '/storage/voice-clips';
 }
 
-function create_studio_session(string $operatorName, ?PDO $connection = null): array
+function create_studio_session(string $operatorName, ?PDO $connection = null, ?string $userId = null): array
 {
-    ensure_collaboration_push_schema();
+    ensure_studio_user_schema();
     $pdo = $connection ?? db();
     $token = random_token();
     $hash = hash('sha256', $token);
     $timestamp = now();
     $statement = $pdo->prepare(
-        'INSERT INTO studio_sessions (token_hash, operator_name, created_at, expires_at) VALUES (?, ?, ?, ?)'
+        'INSERT INTO studio_sessions (token_hash, operator_name, studio_user_id, created_at, expires_at)
+         VALUES (?, ?, ?, ?, ?)'
     );
-    $statement->execute([$hash, $operatorName, $timestamp, $timestamp + SESSION_SECONDS]);
+    $statement->execute([$hash, $operatorName, $userId, $timestamp, $timestamp + SESSION_SECONDS]);
     setcookie(SESSION_COOKIE, $token, cookie_options($timestamp + SESSION_SECONDS));
-    return ['token_hash' => $hash, 'operator_name' => $operatorName];
+    return ['token_hash' => $hash, 'operator_name' => $operatorName,
+        'studio_user_id' => $userId, 'role' => $userId === null ? 'admin' : 'staff'];
 }
 
 function require_studio_session(): array
 {
-    ensure_collaboration_push_schema();
+    ensure_studio_user_schema();
     $token = (string) ($_COOKIE[SESSION_COOKIE] ?? '');
     if ($token === '') {
         json_response(['ok' => false, 'error' => 'Connexion requise.'], 401);
     }
     $hash = hash('sha256', $token);
     $statement = db()->prepare(
-        'SELECT token_hash, operator_name, expires_at FROM studio_sessions WHERE token_hash = ? LIMIT 1'
+        'SELECT s.token_hash, s.operator_name, s.studio_user_id, s.expires_at,
+                u.display_name AS user_name, u.active AS user_active
+         FROM studio_sessions s LEFT JOIN studio_users u ON u.id = s.studio_user_id
+         WHERE s.token_hash = ? LIMIT 1'
     );
     $statement->execute([$hash]);
     $session = $statement->fetch();
-    if (!$session || (int) $session['expires_at'] <= now()) {
+    if (!$session || (int) $session['expires_at'] <= now()
+        || ($session['studio_user_id'] !== null && (int) $session['user_active'] !== 1)) {
         if ($session) {
             $delete = db()->prepare('DELETE FROM studio_sessions WHERE token_hash = ?');
             $delete->execute([$hash]);
@@ -433,8 +443,34 @@ function require_studio_session(): array
     }
     return [
         'token_hash' => $hash,
-        'operator_name' => (string) ($session['operator_name'] ?: 'Studio'),
+        'operator_name' => (string) (($session['studio_user_id'] === null
+            ? $session['operator_name'] : $session['user_name']) ?: 'Studio'),
+        'studio_user_id' => $session['studio_user_id'],
+        'role' => $session['studio_user_id'] === null ? 'admin' : 'staff',
     ];
+}
+
+function require_studio_admin(): array
+{
+    $session = require_studio_session();
+    if ($session['role'] !== 'admin') {
+        json_response(['ok' => false, 'error' => 'Accès réservé à l’administration.'], 403);
+    }
+    return $session;
+}
+
+function revoke_studio_user_sessions(string $userId, PDO $pdo): void
+{
+    ensure_studio_push_schema();
+    foreach ([
+        'DELETE FROM studio_push_subscriptions WHERE studio_user_id = ?',
+        'DELETE FROM studio_claims WHERE session_token_hash IN
+         (SELECT token_hash FROM studio_sessions WHERE studio_user_id = ?)',
+        'DELETE FROM studio_sessions WHERE studio_user_id = ?',
+    ] as $sql) {
+        $statement = $pdo->prepare($sql);
+        $statement->execute([$userId]);
+    }
 }
 
 function logout_studio(): void
@@ -499,15 +535,35 @@ function ensure_studio_push_schema(): void
     db()->exec(
         'CREATE TABLE IF NOT EXISTS studio_push_subscriptions (
             token_hash CHAR(64) NOT NULL PRIMARY KEY,
+            studio_user_id CHAR(36) NULL,
             expo_token VARCHAR(255) NOT NULL,
             platform ENUM(\'android\', \'ios\') NOT NULL DEFAULT \'android\',
             enabled TINYINT(1) NOT NULL DEFAULT 1,
             created_at BIGINT UNSIGNED NOT NULL,
             updated_at BIGINT UNSIGNED NOT NULL,
             UNIQUE KEY uq_studio_push_token (expo_token),
+            INDEX idx_studio_push_user (studio_user_id),
             INDEX idx_studio_push_enabled (enabled, updated_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
     );
+    $pdo = db();
+    $lockName = 'ellevie_studio_push_user_v1';
+    $lock = $pdo->prepare('SELECT GET_LOCK(?, 10)');
+    $lock->execute([$lockName]);
+    if ((int) $lock->fetchColumn() !== 1) {
+        throw new RuntimeException('Impossible de préparer les notifications Studio.');
+    }
+    try {
+        if (!$pdo->query("SHOW COLUMNS FROM studio_push_subscriptions LIKE 'studio_user_id'")->fetch()) {
+            $pdo->exec('ALTER TABLE studio_push_subscriptions ADD COLUMN studio_user_id CHAR(36) NULL AFTER token_hash');
+        }
+        if (!$pdo->query("SHOW INDEX FROM studio_push_subscriptions WHERE Key_name = 'idx_studio_push_user'")->fetch()) {
+            $pdo->exec('ALTER TABLE studio_push_subscriptions ADD INDEX idx_studio_push_user (studio_user_id)');
+        }
+    } finally {
+        $release = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+        $release->execute([$lockName]);
+    }
     $ready = true;
 }
 
@@ -577,6 +633,58 @@ function ensure_collaboration_push_schema(): void
         $pdo->exec("ALTER TABLE replies ADD COLUMN operator_name VARCHAR(40) NOT NULL DEFAULT 'Studio' AFTER body");
     }
     $ready = true;
+}
+
+function ensure_studio_user_schema(): void
+{
+    static $ready = false;
+    if ($ready) return;
+    ensure_collaboration_push_schema();
+    $pdo = db();
+    $version = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'studio_user_schema_version' LIMIT 1")->fetchColumn();
+    if ((string) $version === '1') {
+        $ready = true;
+        return;
+    }
+    $lockName = 'ellevie_studio_users_v1';
+    $lock = $pdo->prepare('SELECT GET_LOCK(?, 10)');
+    $lock->execute([$lockName]);
+    if ((int) $lock->fetchColumn() !== 1) {
+        throw new RuntimeException('Impossible de préparer les comptes Studio. Réessayez dans un instant.');
+    }
+    try {
+        $version = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'studio_user_schema_version' LIMIT 1")->fetchColumn();
+        if ((string) $version !== '1') {
+            $pdo->exec(
+                'CREATE TABLE IF NOT EXISTS studio_users (
+                    id CHAR(36) NOT NULL PRIMARY KEY,
+                    display_name VARCHAR(40) NOT NULL,
+                    email VARCHAR(191) NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    active TINYINT(1) NOT NULL DEFAULT 1,
+                    created_at BIGINT UNSIGNED NOT NULL,
+                    updated_at BIGINT UNSIGNED NOT NULL,
+                    UNIQUE KEY uq_studio_users_email (email)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+            if (!$pdo->query("SHOW COLUMNS FROM studio_sessions LIKE 'studio_user_id'")->fetch()) {
+                $pdo->exec('ALTER TABLE studio_sessions ADD COLUMN studio_user_id CHAR(36) NULL AFTER operator_name');
+            }
+            if (!$pdo->query("SHOW INDEX FROM studio_sessions WHERE Key_name = 'idx_studio_sessions_user'")->fetch()) {
+                $pdo->exec('ALTER TABLE studio_sessions ADD INDEX idx_studio_sessions_user (studio_user_id)');
+            }
+            $save = $pdo->prepare(
+                "INSERT INTO settings (setting_key, setting_value, updated_at)
+                 VALUES ('studio_user_schema_version', '1', ?)
+                 ON DUPLICATE KEY UPDATE setting_value = '1', updated_at = VALUES(updated_at)"
+            );
+            $save->execute([now()]);
+        }
+        $ready = true;
+    } finally {
+        $release = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+        $release->execute([$lockName]);
+    }
 }
 
 function ensure_account_voice_schema(): void

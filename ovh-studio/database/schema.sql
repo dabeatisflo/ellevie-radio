@@ -96,19 +96,34 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 CREATE TABLE IF NOT EXISTS studio_sessions (
   token_hash CHAR(64) NOT NULL PRIMARY KEY,
   operator_name VARCHAR(40) NOT NULL DEFAULT 'Studio',
+  studio_user_id CHAR(36) NULL,
   created_at BIGINT UNSIGNED NOT NULL,
   expires_at BIGINT UNSIGNED NOT NULL,
+  INDEX idx_studio_sessions_user (studio_user_id),
   INDEX idx_sessions_expiry (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS studio_users (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  display_name VARCHAR(40) NOT NULL,
+  email VARCHAR(191) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at BIGINT UNSIGNED NOT NULL,
+  updated_at BIGINT UNSIGNED NOT NULL,
+  UNIQUE KEY uq_studio_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS studio_push_subscriptions (
   token_hash CHAR(64) NOT NULL PRIMARY KEY,
+  studio_user_id CHAR(36) NULL,
   expo_token VARCHAR(255) NOT NULL,
   platform ENUM('android', 'ios') NOT NULL DEFAULT 'android',
   enabled TINYINT(1) NOT NULL DEFAULT 1,
   created_at BIGINT UNSIGNED NOT NULL,
   updated_at BIGINT UNSIGNED NOT NULL,
   UNIQUE KEY uq_studio_push_token (expo_token),
+  INDEX idx_studio_push_user (studio_user_id),
   INDEX idx_studio_push_enabled (enabled, updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

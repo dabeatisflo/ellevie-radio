@@ -98,23 +98,35 @@ try {
         change_studio_password();
     }
     if ($path === '/api/studio/recovery-email' && $method === 'GET') {
-        require_studio_session();
+        require_studio_admin();
         get_studio_recovery_email();
     }
     if ($path === '/api/studio/recovery-email' && $method === 'POST') {
         require_allowed_origin();
-        require_studio_session();
+        require_studio_admin();
         change_studio_recovery_email();
+    }
+    if ($path === '/api/studio/users' && $method === 'GET') {
+        require_studio_admin();
+        list_studio_users();
+    }
+    if ($path === '/api/studio/users' && $method === 'POST') {
+        require_allowed_origin();
+        require_studio_admin();
+        create_studio_user();
+    }
+    if (preg_match('#^/api/studio/users/([a-f0-9-]{36})$#', $path, $match) && $method === 'PATCH') {
+        require_allowed_origin();
+        require_studio_admin();
+        update_studio_user($match[1]);
     }
     if ($path === '/api/studio/push-subscription' && $method === 'POST') {
         require_allowed_origin();
-        require_studio_session();
-        update_studio_push_subscription(true);
+        update_studio_push_subscription(true, require_studio_session());
     }
     if ($path === '/api/studio/push-subscription' && $method === 'DELETE') {
         require_allowed_origin();
-        require_studio_session();
-        update_studio_push_subscription(false);
+        update_studio_push_subscription(false, require_studio_session());
     }
     if ($path === '/api/studio/claims' && $method === 'POST') {
         require_allowed_origin();
@@ -526,7 +538,7 @@ function confirm_password_reset(): never
     ensure_password_reset_schema();
     ensure_studio_push_schema();
     ensure_web_push_schema();
-    ensure_collaboration_push_schema();
+    ensure_studio_user_schema();
 
     $input = request_json();
     require_form_token($input);
@@ -614,9 +626,10 @@ function confirm_password_reset(): never
                  WHERE setting_key = 'admin_password_hash'"
             );
             $update->execute([make_password_hash($password), $timestamp]);
-            $pdo->exec('DELETE FROM studio_claims');
-            $pdo->exec('DELETE FROM studio_sessions');
-            $pdo->exec('DELETE FROM studio_push_subscriptions');
+            $pdo->exec('DELETE FROM studio_claims WHERE session_token_hash IN
+                        (SELECT token_hash FROM studio_sessions WHERE studio_user_id IS NULL)');
+            $pdo->exec('DELETE FROM studio_sessions WHERE studio_user_id IS NULL');
+            $pdo->exec('DELETE FROM studio_push_subscriptions WHERE studio_user_id IS NULL');
             $deleteOtherTokens = $pdo->prepare(
                 "DELETE FROM password_reset_tokens
                  WHERE account_type = 'studio' AND token_hash <> ?"
@@ -823,7 +836,7 @@ function submit_voice_message(): never
     json_response(['ok' => true, 'message' => 'Votre message vocal a bien été transmis au studio.'], 201);
 }
 
-function update_studio_push_subscription(bool $enabled): never
+function update_studio_push_subscription(bool $enabled, array $session): never
 {
     ensure_studio_push_schema();
     $input = request_json();
@@ -834,8 +847,11 @@ function update_studio_push_subscription(bool $enabled): never
 
     $tokenHash = hash('sha256', $token);
     if (!$enabled) {
-        $delete = db()->prepare('DELETE FROM studio_push_subscriptions WHERE token_hash = ?');
-        $delete->execute([$tokenHash]);
+        $delete = db()->prepare(
+            'DELETE FROM studio_push_subscriptions WHERE token_hash = ?
+             AND studio_user_id <=> ?'
+        );
+        $delete->execute([$tokenHash, $session['studio_user_id']]);
         json_response(['ok' => true, 'enabled' => false]);
     }
 
@@ -845,12 +861,14 @@ function update_studio_push_subscription(bool $enabled): never
     }
     $timestamp = now();
     $save = db()->prepare(
-        'INSERT INTO studio_push_subscriptions (token_hash, expo_token, platform, enabled, created_at, updated_at)
-         VALUES (?, ?, ?, 1, ?, ?)
-         ON DUPLICATE KEY UPDATE expo_token = VALUES(expo_token), platform = VALUES(platform),
+        'INSERT INTO studio_push_subscriptions
+         (token_hash, studio_user_id, expo_token, platform, enabled, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 1, ?, ?)
+         ON DUPLICATE KEY UPDATE studio_user_id = VALUES(studio_user_id),
+           expo_token = VALUES(expo_token), platform = VALUES(platform),
            enabled = 1, updated_at = VALUES(updated_at)'
     );
-    $save->execute([$tokenHash, $token, $platform, $timestamp, $timestamp]);
+    $save->execute([$tokenHash, $session['studio_user_id'], $token, $platform, $timestamp, $timestamp]);
     json_response(['ok' => true, 'enabled' => true]);
 }
 
@@ -1393,16 +1411,35 @@ function bootstrap_studio_recovery(): never
 
 function studio_login(): never
 {
+    ensure_studio_user_schema();
     $input = request_json();
+    $loginHash = client_hash('login');
+    if (!rate_limit($loginHash, 'login', 8, 900)) {
+        json_response(['ok' => false, 'error' => 'Trop de tentatives. Réessayez plus tard.'], 429);
+    }
+    $email = normalize_email((string) ($input['email'] ?? ''));
+    if ($email !== '') {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 191) {
+            json_response(['ok' => false, 'error' => 'Identifiants incorrects.'], 401);
+        }
+        $statement = db()->prepare(
+            'SELECT id, display_name, password_hash, active FROM studio_users WHERE email = ? LIMIT 1'
+        );
+        $statement->execute([$email]);
+        $user = $statement->fetch();
+        if (!$user || (int) $user['active'] !== 1
+            || !password_verify((string) ($input['password'] ?? ''), (string) $user['password_hash'])) {
+            json_response(['ok' => false, 'error' => 'Identifiants incorrects.'], 401);
+        }
+        create_studio_session((string) $user['display_name'], null, (string) $user['id']);
+        json_response(['ok' => true, 'operatorName' => $user['display_name'], 'role' => 'staff']);
+    }
+
     $operatorName = trim(preg_replace('/\s+/u', ' ', (string) ($input['operatorName'] ?? '')) ?? '');
     $operatorLength = function_exists('mb_strlen') ? mb_strlen($operatorName) : strlen($operatorName);
     if ($operatorLength < 2 || $operatorLength > 40
         || preg_match('/[\x00-\x1F\x7F]/u', $operatorName)) {
         json_response(['ok' => false, 'error' => 'Saisissez votre prénom (2 à 40 caractères).'], 400);
-    }
-    $loginHash = client_hash('login');
-    if (!rate_limit($loginHash, 'login', 8, 900)) {
-        json_response(['ok' => false, 'error' => 'Trop de tentatives. Réessayez plus tard.'], 429);
     }
     $storedHash = admin_password_hash();
     if ($storedHash === null) {
@@ -1413,7 +1450,115 @@ function studio_login(): never
     }
     cleanup_expired_data();
     create_studio_session($operatorName);
-    json_response(['ok' => true, 'operatorName' => $operatorName]);
+    json_response(['ok' => true, 'operatorName' => $operatorName, 'role' => 'admin']);
+}
+
+function list_studio_users(): never
+{
+    ensure_studio_user_schema();
+    $users = db()->query(
+        'SELECT id, display_name AS displayName, email, active, created_at AS createdAt
+         FROM studio_users ORDER BY display_name ASC, created_at ASC'
+    )->fetchAll();
+    foreach ($users as &$user) {
+        $user['active'] = (bool) $user['active'];
+    }
+    unset($user);
+    json_response(['ok' => true, 'users' => $users]);
+}
+
+function create_studio_user(): never
+{
+    ensure_studio_user_schema();
+    if (!rate_limit(client_hash('studio-user-create'), 'studio-user-create', 20, 3600)) {
+        json_response(['ok' => false, 'error' => 'Trop de créations. Réessayez plus tard.'], 429);
+    }
+    $input = request_json();
+    $name = trim(preg_replace('/\s+/u', ' ', (string) ($input['displayName'] ?? '')) ?? '');
+    $email = normalize_email((string) ($input['email'] ?? ''));
+    $password = (string) ($input['password'] ?? '');
+    $length = function_exists('mb_strlen') ? mb_strlen($name) : strlen($name);
+    if ($length < 2 || $length > 40 || preg_match('/[\x00-\x1F\x7F]/u', $name)) {
+        json_response(['ok' => false, 'error' => 'Le prénom doit contenir entre 2 et 40 caractères.'], 400);
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 191) {
+        json_response(['ok' => false, 'error' => 'Saisissez une adresse e-mail valide.'], 400);
+    }
+    if ($error = validate_new_password($password)) {
+        json_response(['ok' => false, 'error' => $error], 400);
+    }
+    $id = uuid_v4();
+    $timestamp = now();
+    try {
+        $insert = db()->prepare(
+            'INSERT INTO studio_users
+             (id, display_name, email, password_hash, active, created_at, updated_at)
+             VALUES (?, ?, ?, ?, 1, ?, ?)'
+        );
+        $insert->execute([$id, $name, $email, make_password_hash($password), $timestamp, $timestamp]);
+    } catch (PDOException $error) {
+        if ((int) ($error->errorInfo[1] ?? 0) === 1062) {
+            json_response(['ok' => false, 'error' => 'Cette adresse a déjà un compte Studio.'], 409);
+        }
+        throw $error;
+    }
+    $audit = db()->prepare("INSERT INTO audit_log (action, message_id, created_at) VALUES ('studio-user:created', NULL, ?)");
+    $audit->execute([$timestamp]);
+    json_response(['ok' => true, 'user' => [
+        'id' => $id, 'displayName' => $name, 'email' => $email, 'active' => true,
+        'createdAt' => $timestamp,
+    ]], 201);
+}
+
+function update_studio_user(string $id): never
+{
+    ensure_studio_user_schema();
+    ensure_studio_push_schema();
+    if (!rate_limit(client_hash('studio-user-update'), 'studio-user-update', 40, 3600)) {
+        json_response(['ok' => false, 'error' => 'Trop de modifications. Réessayez plus tard.'], 429);
+    }
+    $input = request_json();
+    $changeActive = array_key_exists('active', $input);
+    $changePassword = array_key_exists('password', $input);
+    if ($changeActive === $changePassword
+        || ($changeActive && !is_bool($input['active']))) {
+        json_response(['ok' => false, 'error' => 'Modification invalide.'], 400);
+    }
+    if ($changePassword && ($error = validate_new_password((string) $input['password']))) {
+        json_response(['ok' => false, 'error' => $error], 400);
+    }
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $select = $pdo->prepare('SELECT id, active FROM studio_users WHERE id = ? FOR UPDATE');
+        $select->execute([$id]);
+        $user = $select->fetch();
+        if (!$user) {
+            $pdo->rollBack();
+            json_response(['ok' => false, 'error' => 'Compte introuvable.'], 404);
+        }
+        if ($changeActive) {
+            $active = $input['active'] ? 1 : 0;
+            $update = $pdo->prepare('UPDATE studio_users SET active = ?, updated_at = ? WHERE id = ?');
+            $update->execute([$active, now(), $id]);
+            if (!$active) revoke_studio_user_sessions($id, $pdo);
+            $action = $active ? 'studio-user:activated' : 'studio-user:deactivated';
+        } else {
+            $update = $pdo->prepare('UPDATE studio_users SET password_hash = ?, updated_at = ? WHERE id = ?');
+            $update->execute([make_password_hash((string) $input['password']), now(), $id]);
+            revoke_studio_user_sessions($id, $pdo);
+            $action = 'studio-user:password-reset';
+        }
+        $audit = $pdo->prepare('INSERT INTO audit_log (action, message_id, created_at) VALUES (?, NULL, ?)');
+        $audit->execute([$action, now()]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+    json_response(['ok' => true, 'message' => $changePassword
+        ? 'Mot de passe modifié. Ses sessions ont été fermées.'
+        : ($input['active'] ? 'Compte réactivé.' : 'Compte désactivé. Ses sessions ont été fermées.')]);
 }
 
 
@@ -1456,6 +1601,7 @@ function save_studio_recovery_email(string $email, string $auditAction): void
 
 function change_studio_recovery_email(): never
 {
+    require_studio_admin();
     ensure_password_reset_schema();
     $input = request_json();
     if (!rate_limit(client_hash('studio-recovery-email'), 'studio-recovery-email', 5, 900)) {
@@ -1510,6 +1656,41 @@ function change_studio_password(): never
     $current = (string) ($input['currentPassword'] ?? '');
     $new = (string) ($input['newPassword'] ?? '');
     $confirmation = (string) ($input['confirmation'] ?? '');
+    if ($session['role'] === 'staff') {
+        ensure_studio_push_schema();
+        $userId = (string) $session['studio_user_id'];
+        if ($new !== $confirmation) {
+            json_response(['ok' => false, 'error' => 'Les deux nouveaux mots de passe ne correspondent pas.'], 400);
+        }
+        if (hash_equals($current, $new)) {
+            json_response(['ok' => false, 'error' => 'Choisissez un mot de passe différent.'], 400);
+        }
+        if ($error = validate_new_password($new)) {
+            json_response(['ok' => false, 'error' => $error], 400);
+        }
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $select = $pdo->prepare('SELECT password_hash FROM studio_users WHERE id = ? AND active = 1 LIMIT 1 FOR UPDATE');
+            $select->execute([$userId]);
+            $user = $select->fetch();
+            if (!$user || !password_verify($current, (string) $user['password_hash'])) {
+                $pdo->rollBack();
+                json_response(['ok' => false, 'error' => 'Le mot de passe actuel est incorrect.'], 401);
+            }
+            $update = $pdo->prepare('UPDATE studio_users SET password_hash = ?, updated_at = ? WHERE id = ? AND active = 1');
+            $update->execute([make_password_hash($new), now(), $userId]);
+            revoke_studio_user_sessions($userId, $pdo);
+            create_studio_session((string) $session['operator_name'], $pdo, $userId);
+            $audit = $pdo->prepare("INSERT INTO audit_log (action, message_id, created_at) VALUES ('studio-user:password-changed', NULL, ?)");
+            $audit->execute([now()]);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        json_response(['ok' => true, 'message' => 'Votre mot de passe a été modifié. Vos autres sessions ont été fermées.']);
+    }
     $storedHash = admin_password_hash();
     if ($storedHash === null || !password_verify($current, $storedHash)) {
         json_response(['ok' => false, 'error' => 'Le mot de passe actuel est incorrect.'], 401);
@@ -1524,12 +1705,16 @@ function change_studio_password(): never
         json_response(['ok' => false, 'error' => $error], 400);
     }
 
+    ensure_studio_push_schema();
     $pdo = db();
     $pdo->beginTransaction();
     try {
         $update = $pdo->prepare("UPDATE settings SET setting_value = ?, updated_at = ? WHERE setting_key = 'admin_password_hash'");
         $update->execute([make_password_hash($new), now()]);
-        $pdo->exec('DELETE FROM studio_sessions');
+        $pdo->exec('DELETE FROM studio_claims WHERE session_token_hash IN
+                    (SELECT token_hash FROM studio_sessions WHERE studio_user_id IS NULL)');
+        $pdo->exec('DELETE FROM studio_sessions WHERE studio_user_id IS NULL');
+        $pdo->exec('DELETE FROM studio_push_subscriptions WHERE studio_user_id IS NULL');
         create_studio_session((string) $session['operator_name'], $pdo);
         $audit = $pdo->prepare("INSERT INTO audit_log (action, message_id, created_at) VALUES ('password:changed', NULL, ?)");
         $audit->execute([now()]);
@@ -1705,6 +1890,7 @@ function list_studio_messages(array $session): never
     json_response([
         'ok' => true,
         'operatorName' => (string) $session['operator_name'],
+        'role' => (string) $session['role'],
         'messages' => $messages,
         'claims' => $claims,
         'stats' => [
