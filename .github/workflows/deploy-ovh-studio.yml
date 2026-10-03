@@ -29,7 +29,7 @@ jobs:
       - name: Check out the verified Studio source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: android-complete
+          ref: 9ba6e5002700ba7fb4ce399d4101fa850d0f4f02
           persist-credentials: false
 
       - name: Validate the Studio source
@@ -220,7 +220,7 @@ jobs:
               && [[ "$reset_html" == *'mot-de-passe-oublie.js?v=1'* ]] \
               && [[ "$reset_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
               && [[ "$studio_html" == *'/mot-de-passe-oublie?type=studio'* ]] \
-              && [[ "$studio_html" == *'studio.js?v=13'* ]] \
+              && [[ "$studio_html" == *'studio.js?v=14'* ]] \
               && [[ "$studio_html" == *'id="user-create-form"'* ]] \
               && [[ "$studio_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
               && [[ "$privacy_html" == *'noindex, nofollow, noarchive, nosnippet, noimageindex'* ]] \
