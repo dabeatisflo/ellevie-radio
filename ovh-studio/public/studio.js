@@ -1,9 +1,12 @@
 const loginPanel = document.querySelector("#login-panel");
 const loginForm = document.querySelector("#login-form");
 const loginStatus = document.querySelector("#login-status");
+const loginButton = loginForm.querySelector("button[type='submit']");
+const loginModeHelp = document.querySelector("#login-mode-help");
 const operatorInput = document.querySelector("#operator-name");
 const operatorEmailInput = document.querySelector("#operator-email");
 const passwordInput = document.querySelector("#password");
+const passwordToggle = document.querySelector("#toggle-login-password");
 const adminLoginMode = document.querySelector("#admin-login-mode");
 const staffLoginMode = document.querySelector("#staff-login-mode");
 const adminLoginFields = document.querySelector("#admin-login-fields");
@@ -52,6 +55,8 @@ let currentStatus = "active";
 let currentOperatorName = "";
 let currentRole = "";
 let loginMode = "admin";
+let loginPending = false;
+let sessionRevision = 0;
 let currentClaims = {};
 let pollTimer = null;
 let knownNewestId = null;
@@ -65,8 +70,15 @@ const nativePush = { token: "", enabled: false, platform: "android" };
 
 adminLoginMode.addEventListener("click", () => setLoginMode("admin"));
 staffLoginMode.addEventListener("click", () => setLoginMode("staff"));
+passwordToggle.addEventListener("click", () => {
+  const visible = passwordInput.type === "password";
+  passwordInput.type = visible ? "text" : "password";
+  passwordToggle.textContent = visible ? "Masquer" : "Afficher";
+  passwordToggle.setAttribute("aria-pressed", String(visible));
+});
 
 function setLoginMode(mode) {
+  if (loginPending) return;
   loginMode = mode;
   const staff = mode === "staff";
   adminLoginMode.setAttribute("aria-pressed", String(!staff));
@@ -76,35 +88,76 @@ function setLoginMode(mode) {
   adminPasswordHelp.hidden = staff;
   staffPasswordHelp.hidden = !staff;
   operatorInput.required = !staff;
+  operatorInput.disabled = staff;
   operatorEmailInput.required = staff;
+  operatorEmailInput.disabled = !staff;
+  passwordInput.autocomplete = `section-studio-${staff ? "staff" : "admin"} current-password`;
+  loginModeHelp.textContent = staff
+    ? "Utilisez l’e-mail et le mot de passe du compte créé par le responsable du Studio."
+    : "Utilisez le mot de passe du responsable du Studio.";
   loginStatus.textContent = "";
   (staff ? operatorEmailInput : operatorInput).focus();
 }
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (loginPending || !loginForm.reportValidity()) return;
+  loginPending = true;
+  sessionRevision++;
+  loginButton.disabled = true;
+  adminLoginMode.disabled = true;
+  staffLoginMode.disabled = true;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
   loginStatus.textContent = "Connexion…";
   loginStatus.className = "form-status";
   try {
     const response = await apiFetch("/api/studio/login", {
       method: "POST",
+      signal: controller.signal,
       body: JSON.stringify(loginMode === "staff"
         ? { email: operatorEmailInput.value.trim(), password: passwordInput.value }
         : { operatorName: operatorInput.value, password: passwordInput.value })
     });
-    if (!response.ok) throw new Error(response.error || "Connexion impossible.");
+    if (!response.ok) {
+      if (response.statusCode === 401) {
+        throw new Error(loginMode === "staff"
+          ? "E-mail ou mot de passe incorrect. Utilisez votre compte personnel Studio, créé par le responsable."
+          : "Mot de passe du responsable incorrect. Utilisez « Mot de passe oublié ? » pour le réinitialiser.");
+      }
+      if (response.statusCode === 429) {
+        throw new Error(loginMode === "staff"
+          ? "Trop de tentatives. Attendez 15 minutes avant de réessayer. Pour réinitialiser votre mot de passe, contactez le responsable."
+          : "Trop de tentatives. Attendez 15 minutes avant de réessayer, ou utilisez « Mot de passe oublié ? ».");
+      }
+      throw new Error(response.error || "Connexion impossible.");
+    }
     currentOperatorName = response.operatorName || operatorInput.value.trim();
     currentRole = response.role || "admin";
     passwordInput.value = "";
+    passwordInput.type = "password";
+    passwordToggle.textContent = "Afficher";
+    passwordToggle.setAttribute("aria-pressed", "false");
     showDashboard();
     await loadMessages(true);
   } catch (error) {
-    loginStatus.textContent = error.message;
+    loginStatus.textContent = error.name === "AbortError"
+      ? "Le Studio met trop de temps à répondre. Vérifiez votre connexion puis réessayez."
+      : error instanceof TypeError
+        ? "Impossible de joindre le Studio. Vérifiez votre connexion puis réessayez."
+        : error.message;
     loginStatus.className = "form-status is-error";
+  } finally {
+    clearTimeout(timeout);
+    loginPending = false;
+    loginButton.disabled = false;
+    adminLoginMode.disabled = false;
+    staffLoginMode.disabled = false;
   }
 });
 
 logoutButton.addEventListener("click", async () => {
+  sessionRevision++;
   await syncStudioPushSubscription(false).catch(() => null);
   await apiFetch("/api/studio/logout", { method: "POST", body: "{}" }).catch(() => null);
   postNativeMessage("studioLoggedOut");
@@ -336,14 +389,18 @@ messageList.addEventListener("keydown", (event) => {
 checkExistingSession();
 
 async function checkExistingSession() {
+  const revision = sessionRevision;
   const response = await apiFetch("/api/studio/messages?status=active&limit=1").catch(() => null);
+  if (revision !== sessionRevision) return;
   if (response?.ok) {
     currentOperatorName = response.operatorName || "Studio";
     currentRole = response.role || "admin";
     showDashboard();
     await loadMessages();
   } else {
-    showLogin();
+    showLogin(response && response.statusCode !== 401
+      ? (response.error || "Le Studio est momentanément indisponible. Réessayez dans un instant.")
+      : "");
   }
 }
 

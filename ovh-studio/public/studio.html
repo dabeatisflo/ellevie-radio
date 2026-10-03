@@ -7,8 +7,8 @@
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <meta name="referrer" content="no-referrer">
     <title>Studio — Ellevie</title>
-    <link rel="stylesheet" href="/styles.css?v=13">
-    <script src="/studio.js?v=13" defer></script>
+    <link rel="stylesheet" href="/styles.css?v=14">
+    <script src="/studio.js?v=14" defer></script>
   </head>
   <body class="studio-page">
     <main>
@@ -24,16 +24,20 @@
             <button id="admin-login-mode" type="button" aria-pressed="true">Responsable</button>
             <button id="staff-login-mode" type="button" aria-pressed="false">Compte personnel</button>
           </div>
+          <p id="login-mode-help">Utilisez le mot de passe du responsable du Studio.</p>
           <div id="admin-login-fields" class="login-fields">
             <label for="operator-name">Votre prénom</label>
-            <input id="operator-name" name="operatorName" type="text" autocomplete="given-name" minlength="2" maxlength="40" required>
+            <input id="operator-name" name="operatorName" type="text" autocomplete="section-studio-admin given-name" minlength="2" maxlength="40" required>
           </div>
           <div id="staff-login-fields" class="login-fields" hidden>
             <label for="operator-email">Votre e-mail</label>
-            <input id="operator-email" name="email" type="email" autocomplete="username" maxlength="191" inputmode="email">
+            <input id="operator-email" name="email" type="email" autocomplete="section-studio-staff username" maxlength="191" inputmode="email" disabled>
           </div>
           <label for="password">Mot de passe</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <div class="studio-login-password">
+            <input id="password" name="password" type="password" autocomplete="section-studio-admin current-password" aria-describedby="login-mode-help" required>
+            <button id="toggle-login-password" class="secondary-button" type="button" aria-controls="password" aria-pressed="false">Afficher</button>
+          </div>
           <a id="admin-password-help" class="text-link password-help-link" href="/mot-de-passe-oublie?type=studio">Mot de passe oublié&nbsp;?</a>
           <p id="staff-password-help" class="password-help-link" hidden>Mot de passe oublié ? Demandez au responsable de le réinitialiser.</p>
           <button class="primary-button" type="submit">Se connecter</button>
