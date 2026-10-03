@@ -5,6 +5,7 @@ on:
     branches:
       - android-complete
       - studio-users
+      - fix/studio-login-20261003
   pull_request:
     branches:
       - android-complete
@@ -35,3 +36,7 @@ jobs:
           node --check ovh-studio/public/studio.js
       - name: Run Studio account integration checks
         run: bash tests/studio-users.sh
+      - name: Run Studio login form checks
+        run: |
+          npm install --prefix "$RUNNER_TEMP/ellevie-dom-test" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund jsdom@26.1.0
+          NODE_PATH="$RUNNER_TEMP/ellevie-dom-test/node_modules" node --test tests/studio-login.test.cjs
